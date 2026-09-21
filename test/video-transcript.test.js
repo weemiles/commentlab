@@ -34,7 +34,7 @@ test('blocked, absent and unsafe captions are unavailable without arbitrary requ
   await assert.rejects(collect({ action: 'transcript', videoId: 'http://localhost' }, () => assert.fail()), error => error.status === 400);
 });
 
-test('empty caption responses try another track and long transcripts disclose omissions', async () => {
+test('empty caption responses try another track and long transcripts retain middle passages', async () => {
   let calls = 0;
   const result = await fetchVideoTranscript({ videoId, fetchImpl: async () => {
     calls++;
@@ -44,8 +44,8 @@ test('empty caption responses try another track and long transcripts disclose om
   assert.equal(result.text, '자동 자막');
   assert.equal(result.automatic, true);
   const long = transcriptContext('시작' + '내용'.repeat(20000) + '마지막 반전');
-  assert.ok(long.text.length <= 24000);
-  assert.equal(long.partial, true);
+  assert.ok(long.text.length > 24000);
+  assert.equal(long.partial, false);
   assert.ok(long.text.endsWith('마지막 반전'));
 });
 

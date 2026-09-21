@@ -386,3 +386,18 @@ test('overlapping Korean topics merge while opposite claims stay separate', () =
   const ids = result.opinions.flatMap(group => group.commentIds);
   assert.equal(ids.length, new Set(ids).size);
 });
+
+test('opposing stances stay separate even when both are non-abusive neutral opinions', () => {
+  for (const pair of [
+    ['이 정책의 확대 시행을 찬성합니다 시민에게 필요한 정책입니다', '이 정책의 확대 시행을 거부합니다 시민에게 위험한 정책입니다'],
+    ['이 정책의 확대 시행을 지지합니다 시민을 위한 결정입니다', '이 정책의 확대 시행을 지지하지 않습니다 시민을 위한 결정입니다'],
+    ['I support expanding this policy for the community', 'I reject expanding this policy for the community'],
+    ['I agree with this policy for the community', 'I do not agree with this policy for the community']
+  ]) {
+    const comments = pair.flatMap((text, side) => [0, 1].map(i => ({ id: `${side}-${i}`, text, authorChannelId: `${side}-${i}` })));
+    const groups = analyzeComments(comments, comments.map(() => ({ label: 'neutral', score: .9 }))).opinions;
+    assert.equal(groups.length, 2);
+    assert.ok(groups.every(group => group.count === 2));
+    assert.ok(groups.every(group => new Set(group.commentIds.map(id => id.split('-')[0])).size === 1));
+  }
+});
