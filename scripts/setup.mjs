@@ -13,4 +13,4 @@ for (const folder of ['.agents', '.claude']) {
   await mkdir(target, { recursive: true });
   await copyNew(join(root, 'skills/commentlab-maintenance/SKILL.md'), join(target, 'SKILL.md'));
 }
-console.log('Project-local skills installed; existing files preserved. Set YOUR own API key in .env.');
+console.log('Project-local skills installed; existing files preserved. Run npm run build && npm start, then enter YOUR Jev key in the web UI.');
