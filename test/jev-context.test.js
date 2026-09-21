@@ -32,6 +32,8 @@ test('Jev receives video, parent, missing-context flag and closing negation inde
       const body = JSON.parse(options.body);
       assert.equal(body.state.video.title, '약속 불이행 논란');
       assert.match(body.state.context_rules, /Sarcasm needs contextual evidence/);
+      assert.match(body.state.classification_rules, /DO NOT cancel it/);
+      assert.match(body.state.classification_rules, /laughter alone as hostility/);
       assert.equal(body.questions.comment_1.instructions.parent_comment, comments[0].text);
       assert.equal(body.questions.comment_2.instructions.parent_context_missing, true);
       assert.match(body.questions.comment_3.instructions.comment, /전혀 아니다\.$/);
