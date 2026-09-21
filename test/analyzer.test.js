@@ -248,6 +248,8 @@ test("direct collection keeps successful pages when one continuation fails", asy
     }
   });
   assert.equal(failedAttempts, 2);
+  assert.equal(result.truncated, true);
+  assert.equal(result.failedPages, 1);
   assert.deepEqual(result.comments.map(({ id }) => id), ["c1", "c2"]);
 });
 
