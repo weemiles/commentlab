@@ -218,6 +218,39 @@ test("remote collection falls back to separate page calls when a batch times out
   assert.deepEqual(result.comments.map(({ id }) => id), ["c1", "second", "third"]);
 });
 
+test("direct collection keeps successful pages when one continuation fails", async () => {
+  const payload = (id) => ({ commentEntityPayload: { properties: { commentId: id, content: { content: id } } } });
+  let failedAttempts = 0;
+  const result = await fetchFastVideoAndComments({
+    videoId: "dQw4w9WgXcQ", maxComments: 100,
+    fetchImpl: async (url, options) => {
+      const address = new URL(url);
+      if (address.pathname === "/watch") return new Response("", { status: 429 });
+      const body = JSON.parse(options.body);
+      if (body.videoId) return Response.json({
+        responseContext: { visitorData: "test-visitor" },
+        contents: [{ itemSectionRenderer: { targetId: "comments-section", contents: [
+          { continuationItemRenderer: { continuationEndpoint: { continuationCommand: { token: "first" } } } }
+        ] } }]
+      });
+      if (body.continuation === "first") return Response.json({
+        mutations: [payload("c1")],
+        appendContinuationItemsAction: { targetId: "comments-section", continuationItems: [
+          { continuationEndpoint: { continuationCommand: { token: "broken" } } },
+          { continuationEndpoint: { continuationCommand: { token: "working" } } }
+        ] }
+      });
+      if (body.continuation === "broken") {
+        failedAttempts += 1;
+        throw new DOMException("timed out", "AbortError");
+      }
+      return Response.json({ mutations: [payload("c2")] });
+    }
+  });
+  assert.equal(failedAttempts, 2);
+  assert.deepEqual(result.comments.map(({ id }) => id), ["c1", "c2"]);
+});
+
 test("analyzeComments uses Jev sentiment results when supplied", () => {
   const comments = [{ id: "1", text: "문맥형 댓글", authorChannelId: "a" }];
   const jev = [{ label: "negative", score: 0.91, probabilities: { positive: 0.09, negative: 0.91 } }];
