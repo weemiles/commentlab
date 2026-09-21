@@ -1,3 +1,4 @@
+import { buildReplyTargets } from '../lib/reply-target.js';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ArrowUp, ArrowLeft, ChevronRight, ChevronDown, Download, MessageSquare, Info, Link, Users, ScanText, LoaderCircle, PanelLeft } from 'lucide-react';
@@ -117,6 +118,7 @@ function ResultReply({result,language}:any) {
   const authors=result?[...result.authors].filter(a=>a[filter]>0).sort((a,b)=>b[filter]-a[filter]||b.count-a.count):[];
   const matching=selected?selected.comments.filter((c:any)=>filter==='count'||(filter==='suspicious'?c.suspicious.label:c.sentiment.label===filter)):[];
   const comments=matching.filter((c:any)=>kind==='all'||(kind==='reply'?Boolean(c.parentId):!c.parentId));
+  const replyTargets=useMemo(()=>buildReplyTargets(result.comments),[result.comments]);
   const parents=useMemo(()=>new Map(result.comments.map((c:any)=>[c.id,c])),[result]);
   const commentsById=useMemo(()=>new Map(result.comments.map((c:any)=>[c.id,c])),[result]);
   const openAuthor=(a:any)=>{setAuthor(a);setKind('all');setLimit(50);};
@@ -165,8 +167,12 @@ return (      <section className="assistant-result">
           </div>
           <Tabs className="comment-kind" value={kind} onValueChange={v=>{setKind(String(v));setLimit(50);}}><TabsList aria-label={t('댓글 유형','Comment type')}>{[['all',t('전체','All'),matching.length],['top',t('댓글','Comments'),matching.filter((c:any)=>!c.parentId).length],['reply',t('대댓글','Replies'),matching.filter((c:any)=>c.parentId).length]].map(([value,label,count])=><TabsTrigger key={String(value)} value={String(value)}>{label} <span className="ml-1 tabular-nums">{number(Number(count))}</span></TabsTrigger>)}</TabsList></Tabs>
           {comments.slice(0,limit).map((c:any,i:number)=>{
-            const parent:any=c.parentId?parents.get(c.parentId):null;
+            const relation:any=replyTargets.get(c.id);
+            const parent:any=relation?.target||(c.parentId?parents.get(c.parentId):null);
             return <article key={c.id} className="thread-record">
+              {relation&&<div className="mb-2 text-xs text-muted-foreground">{relation.status==='inferred'?t('답변 대상 추정 · 태그와 작성 시간 기준','Likely reply target · based on mention and time'):relation.status==='missing'?t('태그한 상대의 댓글을 수집하지 못했습니다. 아래는 최상위 댓글입니다.','Tagged comment unavailable. Showing the thread root below.'):t('답변 대상을 특정하기 어렵습니다. 아래는 최상위 댓글입니다.','Reply target is ambiguous. Showing the thread root below.')}
+                {!!relation.candidates.length&&<details className="mt-2"><summary>{t('태그한 상대의 대화 보기','View comments by tagged participants')} ({relation.candidates.length})</summary>{relation.candidates.map((candidate:any)=><div key={candidate.id} className="mt-2 rounded-xl bg-muted p-3"><strong>{candidate.author}</strong> · {commentTime(candidate)}<p className="mt-1 whitespace-pre-wrap">{candidate.text}</p></div>)}</details>}
+              </div>}
               <div className="thread-bubbles">
                 {parent&&<div className="thread-bubble thread-parent"><div className="thread-meta">{authorName(parent)}<small>{t('댓글','Comment')}{commentTime(parent)?` · ${commentTime(parent)}`:''} · {t('좋아요','Likes')} {number(parent.likeCount)}</small></div><p>{parent.text}</p></div>}
                 <div className={`thread-bubble ${parent?'thread-reply':'thread-parent'}`}><div className="thread-meta">{authorName(c)}<small>{c.parentId?t('대댓글','Reply'):t('댓글','Comment')}{commentTime(c)?` · ${commentTime(c)}`:''} · {t('좋아요','Likes')} {number(c.likeCount)}</small></div><p>{c.text}</p></div>
