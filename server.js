@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadEnvFile } from "./lib/env-file.js";
+import { SENTIMENT_VERSION } from './lib/jev-sentiment.js';
 import { analyzeVideo } from "./lib/analyze-video.js";
 import { streamAnalysis } from "./lib/analysis-stream.js";
 import { rejectUnauthorized, requireVisitorKey, localInstallationKey } from './lib/access.js';
@@ -66,7 +67,7 @@ const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
   if (url.pathname === '/api/progress' && rejectUnauthorized(request, response)) return;
   if (request.method === "GET" && url.pathname === "/api/health") {
-    return json(response, 200, { ok: true, collectionMode: "fast-public-page", sentimentEngine: "visitor-jev-key", localKeyConfigured: Boolean(localInstallationKey(request)), maxComments: maxAllowed });
+    return json(response, 200, { ok: true, sentimentVersion: SENTIMENT_VERSION, opinionVersion: 'topics-v2', videoContextEnabled: true, collectionMode: "fast-public-page", sentimentEngine: "visitor-jev-key", localKeyConfigured: Boolean(localInstallationKey(request)), maxComments: maxAllowed });
   }
   if (request.method === "GET" && url.pathname === "/api/progress") return json(response, 200, progressJobs.get(url.searchParams.get("id")) || { stage: "waiting", done: 0, total: 0, percent: 0 });
   if (request.method === "POST" && url.pathname === "/api/analyze") return handleAnalyze(request, response);

@@ -363,3 +363,26 @@ test("direct collection starts a continuation before a slow sibling finishes", a
   assert.equal(result.failedPages, 0);
   assert.deepEqual(result.comments.map(c => c.id).sort(), ['c1','c2','c3','c4']);
 });
+
+test('overlapping Korean topics merge while opposite claims stay separate', () => {
+  const texts = [
+    '기준과 원칙이 지켜져야 한다고 생각합니다',
+    '기준은 원칙으로 지켜져야 한다고 생각합니다',
+    '기준과 원칙이 지켜져야 한다는 의견입니다',
+    '기준은 원칙으로 지켜져야 한다는 의견입니다',
+    '이 정책을 지지합니다 더 추진해야 합니다',
+    '이 정책을 지지합니다 계속 추진해야 합니다',
+    '이 정책을 지지하지 않습니다 추진하면 안 됩니다',
+    '이 정책을 지지하지 않습니다 계속 추진하면 안 됩니다'
+  ];
+  const comments = texts.map((text, i) => ({ id: String(i), text, author: `user${i}`, authorChannelId: `user${i}`, likeCount: 1 }));
+  const result = analyzeComments(comments, comments.map(() => ({ label: 'neutral', score: 0.9 })));
+  const topic = result.opinions.find(group => group.commentIds.includes('0'));
+  assert.deepEqual(new Set(topic.commentIds), new Set(['0','1','2','3']));
+  assert.equal(topic.count, 4);
+  assert.equal(topic.likes, 4);
+  assert.match(topic.summary, /기준|원칙/);
+  assert.ok(result.opinions.every(group => !(group.commentIds.includes('4') && group.commentIds.includes('6'))));
+  const ids = result.opinions.flatMap(group => group.commentIds);
+  assert.equal(ids.length, new Set(ids).size);
+});

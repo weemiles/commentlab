@@ -74,7 +74,33 @@ test('analysis reads transcript before collection, passes it to Jev and never ex
       assert.deepEqual(actions, ['transcript', 'session', 'page', 'classify']);
       assert.equal(progress[0].stage, 'video_context');
       assert.equal(result.summary.total, 1);
+      assert.equal(result.videoContextStatus, available ? 'available' : 'unavailable');
       assert.doesNotMatch(JSON.stringify({ progress, result }), /내부 전사문|"video_content"|"transcript"/);
     }
   } finally { globalThis.fetch = original; }
+});
+
+test('local caption fallback retains a downloaded track when another language fails', async () => {
+  const { mkdtemp, writeFile, rm, access } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { fetchLocalTranscript } = await import('../lib/local-transcript.js');
+  const dir = await mkdtemp(join(tmpdir(), 'commentlab-test-'));
+  const binary = join(dir, 'fake-yt-dlp');
+  const marker = join(dir, 'output-path');
+  const previous = process.env.YT_DLP_PATH;
+  try {
+    await writeFile(binary, `#!${process.execPath}\nconst fs=require('node:fs'); const output=process.argv[process.argv.indexOf('-o')+1]; fs.writeFileSync(${JSON.stringify(marker)},output); fs.writeFileSync(output+'.en.json3',JSON.stringify({events:[{segs:[{utf8:'Successfully acquired caption'}]}]})); process.exit(1);`, { mode: 0o700 });
+    process.env.YT_DLP_PATH = binary;
+    const result = await fetchLocalTranscript({ videoId, language: 'ko' });
+    assert.equal(result.status, 'available');
+    assert.equal(result.language, 'en');
+    assert.equal(result.text, 'Successfully acquired caption');
+    const { readFile } = await import('node:fs/promises');
+    const output = await readFile(marker, 'utf8');
+    await assert.rejects(access(output+'.en.json3'));
+  } finally {
+    if (previous === undefined) delete process.env.YT_DLP_PATH; else process.env.YT_DLP_PATH = previous;
+    await rm(dir, { recursive: true, force: true });
+  }
 });
