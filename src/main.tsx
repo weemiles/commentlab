@@ -117,11 +117,25 @@ function ResultReply({result,language}:any) {
  const authorName=(c:any)=><b>{c.author}{isSelectedAuthor(c)&&<span className="selected-author-label">{t('작성자','Author')}</span>}</b>;
  const commentTime=(c:any)=>{if(c.publishedAt){const date=new Date(c.publishedAt);if(!Number.isNaN(date.getTime()))return new Intl.DateTimeFormat(language==='ko'?'ko-KR':'en-US',{dateStyle:'medium',timeStyle:'short'}).format(date);}return c.publishedText||null;};
   const reasonLabels:any={praise:t('칭찬·축하·기쁨 표현','Praise and congratulations'),support:t('응원·감사·공감 표현','Support and gratitude'),abuse:t('인신공격·모욕 표현','Personal insults or abuse'),ridicule:t('악의적 조롱·비꼼','Malicious ridicule or sarcasm'),constructive:t('건설적 비판·진지한 의견','Constructive criticism or serious opinion'),information:t('정보 전달·질문','Information or questions'),mixed:t('응원·칭찬과 공격이 함께 있음','Support and hostility together'),unclear:t('맥락이 부족해 해석이 불확실함','Insufficient context')};
-  const assessmentReasons=selected?Array.from(new Set(selected.comments.flatMap((c:any)=>[
-    ...(c.sentiment.reason?[`${labels[c.sentiment.label]}: ${reasonLabels[c.sentiment.reason]||c.sentiment.reason}`]:[]),
-    ...(c.suspicious.label?c.suspicious.reasons.map((r:string)=>`${t('매크로 의심','Possible automation')}: ${r}`):[])
-  ]))):[];
-  const authorSentimentPercent=(label:string)=>selected?.comments.length?Math.round(selected.comments.filter((c:any)=>c.sentiment.label===label).length/selected.comments.length*100):0;
+  const tendencyKeys=['positive','negative','neutral'];
+  const tendencyCounts=Object.fromEntries(tendencyKeys.map(k=>[k,selected?.comments.filter((c:any)=>c.sentiment.label===k).length||0]));
+  const tendencyTotal=Object.values(tendencyCounts).reduce((a:number,b:number)=>a+b,0);
+  const percentages=Object.fromEntries(tendencyKeys.map(k=>[k,tendencyTotal?Math.floor(tendencyCounts[k]*100/tendencyTotal):0]));
+  if(tendencyTotal){
+    const remainder=100-Object.values(percentages).reduce((a:number,b:number)=>a+b,0);
+    const ranked=[...tendencyKeys].sort((a,b)=>(tendencyCounts[b]*100/tendencyTotal%1)-(tendencyCounts[a]*100/tendencyTotal%1));
+    for(let i=0;i<remainder;i++) percentages[ranked[i]]++;
+  }
+  const highest=Math.max(...Object.values(tendencyCounts));
+  const leaders=highest?tendencyKeys.filter(k=>tendencyCounts[k]===highest):[];
+  const evaluation=leaders.map(k=>{
+    const counts=new Map<string,number>();
+    for(const c of selected.comments) if(c.sentiment.label===k&&reasonLabels[c.sentiment.reason]) counts.set(c.sentiment.reason,(counts.get(c.sentiment.reason)||0)+1);
+    const reasons=[...counts].sort((a,b)=>b[1]-a[1]);
+    const topReason=reasons[0]?.[0];
+    return t(`${labels[k]}이 ${tendencyCounts[k]}개로 ${leaders.length>1?'공동으로 ':''}가장 많습니다.${topReason?` 주요 판단 근거는 ${reasonLabels[topReason]}입니다.`:' 상세 판단 근거는 제공되지 않았습니다.'}`,`${labels[k]} are ${leaders.length>1?'joint ':''}most common (${tendencyCounts[k]} comments).${topReason?` Main basis: ${reasonLabels[topReason]}.`:' Detailed evidence is unavailable.'}`);
+  }).join(' ');
+  const excludedMixed=selected?.comments.filter((c:any)=>c.sentiment.label==='mixed').length||0;
 
 return (      <section className="assistant-result">
         <p className="mb-5 border-b pb-3 text-sm text-muted-foreground">{t('분석 완료','Analysis complete')} · {((result.timing?.totalMs || 0)/1000).toFixed(1)}s</p><div className="mb-6"><p className="text-sm text-muted-foreground">{result.video.channel}</p><h2 className="mt-1 text-xl font-semibold">{result.video.title}</h2></div>
@@ -139,7 +153,7 @@ return (      <section className="assistant-result">
           <Button variant="ghost" className="mb-4 -ml-2" onClick={()=>{setAuthor(null);setLimit(50);}}><ArrowLeft/>{t('작성자 목록','Back to authors')}</Button>
           <div className="mb-5 pb-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2"><div className="flex flex-wrap items-baseline gap-x-3 gap-y-1"><h4 className="font-semibold">{author.name}</h4>{author.id&&<span className="break-all text-xs font-normal text-muted-foreground">{author.id}</span>}</div><span className="text-sm">{t('전체 댓글','Total comments')} <strong>{number(author.count)}</strong></span></div>
-            <div className="author-details mt-3 text-xs text-muted-foreground"><div><span>{t('작성 댓글 성향','Comment tendency')}</span><strong><button type="button" aria-pressed={filter==='positive'} className={`cursor-pointer rounded-sm hover:underline focus-visible:outline-2 ${filter==='positive'?'text-blue-600':''}`} onClick={()=>{setFilter('positive');setKind('all');setLimit(50);}}>{t('긍정','Positive')} {authorSentimentPercent('positive')}%</button> · <button type="button" aria-pressed={filter==='negative'} className={`cursor-pointer rounded-sm hover:underline focus-visible:outline-2 ${filter==='negative'?'text-blue-600':''}`} onClick={()=>{setFilter('negative');setKind('all');setLimit(50);}}>{t('부정','Negative')} {authorSentimentPercent('negative')}%</button></strong></div><div className="items-start! gap-4"><span className="shrink-0">{t('평가 근거','Assessment evidence')}</span><ul className="space-y-1 text-right">{assessmentReasons.length?assessmentReasons.map((reason:any)=><li key={reason}>{reason}</li>):<li>{t('상세 근거가 없는 이전 분석입니다. 다시 분석해주세요.','This older result has no detailed evidence. Please analyze again.')}</li>}</ul></div><p>{t(`이 영상에서 수집한 댓글 ${number(selected.comments.length)}개만 기준으로 계산한 성향이며, 계정이나 사람 자체에 대한 평가는 아닙니다.`,`This tendency is based only on ${number(selected.comments.length)} comments collected from this video and is not an assessment of the account or person.`)}</p></div>
+            <div className="author-details mt-3 text-xs text-muted-foreground"><div><span>{t('작성 댓글 성향','Comment tendency')}</span><strong className="flex flex-wrap gap-x-3 gap-y-1">{tendencyKeys.map(k=><button key={k} type="button" aria-pressed={filter===k} className={`cursor-pointer rounded-sm hover:underline focus-visible:outline-2 ${filter===k?'text-blue-600':''}`} onClick={()=>{setFilter(k);setKind('all');setLimit(50);}}>{t(k==='positive'?'긍정':k==='negative'?'부정':'중립',k==='positive'?'Positive':k==='negative'?'Negative':'Neutral')} {percentages[k]}%</button>)}</strong></div><div className="items-start! gap-4"><span className="shrink-0">{t('평가','Assessment')}</span><span className="max-w-2xl text-right leading-relaxed">{evaluation||t('혼합 댓글만 있어 세 성향 중 우세한 평가를 정할 수 없습니다.','Only mixed comments are available; no dominant tendency can be determined.')}</span></div>{excludedMixed>0&&<p>{t(`비율은 혼합 댓글 ${excludedMixed}개를 제외한 긍정·부정·중립 댓글 기준입니다.`,`Percentages exclude ${excludedMixed} mixed comments.`)}</p>}<p>{t(`이 영상에서 수집한 댓글 ${number(selected.comments.length)}개만 기준으로 계산한 성향이며, 계정이나 사람 자체에 대한 평가는 아닙니다.`,`This tendency is based only on ${number(selected.comments.length)} comments collected from this video and is not an assessment of the account or person.`)}</p></div>
           </div>
           <Tabs className="comment-kind" value={kind} onValueChange={v=>{setKind(String(v));setLimit(50);}}><TabsList aria-label={t('댓글 유형','Comment type')}>{[['all',t('전체','All'),matching.length],['top',t('댓글','Comments'),matching.filter((c:any)=>!c.parentId).length],['reply',t('대댓글','Replies'),matching.filter((c:any)=>c.parentId).length]].map(([value,label,count])=><TabsTrigger key={String(value)} value={String(value)}>{label} <span className="ml-1 tabular-nums">{number(Number(count))}</span></TabsTrigger>)}</TabsList></Tabs>
           {comments.slice(0,limit).map((c:any,i:number)=>{

@@ -8,7 +8,7 @@ export async function collect(body, fetchImpl = fetch) {
   if (JSON.stringify(body).length > 60000) invalid();
   if (body.action === 'session') {
     if (typeof body.videoId !== 'string' || !/^[A-Za-z0-9_-]{11}$/.test(body.videoId)) invalid();
-    return fetchCollectorSession(body.videoId, fetchImpl);
+    return fetchCollectorSession(body.videoId, fetchImpl, body.language === "en" ? "en" : "ko");
   }
   if (body.action === 'page') {
     if (typeof body.token !== 'string' || !/^[A-Za-z0-9_+/%=.-]{1,32768}$/.test(body.token)) invalid();
