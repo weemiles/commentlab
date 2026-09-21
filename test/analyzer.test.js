@@ -322,3 +322,43 @@ test("analysis stream sends progress and the final result in one response", asyn
   assert.equal(events.at(-1).data.summary.total, 1);
   assert.equal(response.ended, true);
 });
+
+test("direct collection starts a continuation before a slow sibling finishes", async () => {
+  const payload = (id) => ({ commentEntityPayload: { properties: { commentId: id, content: { content: id } } } });
+  let releaseSlow;
+  const slow = new Promise(resolve => { releaseSlow = resolve; });
+  const order = [];
+  const result = await fetchFastVideoAndComments({
+    videoId: "dQw4w9WgXcQ", maxComments: 100, concurrency: 2,
+    fetchImpl: async (url, options) => {
+      const address = new URL(url);
+      if (address.pathname === "/watch") return new Response("", { status: 429 });
+      const body = JSON.parse(options.body);
+      if (body.videoId) return Response.json({
+        responseContext: { visitorData: "test-visitor" },
+        contents: [{ itemSectionRenderer: { targetId: "comments-section", contents: [
+          { continuationItemRenderer: { continuationEndpoint: { continuationCommand: { token: "first" } } } }
+        ] } }]
+      });
+      if (body.continuation === "first") return Response.json({
+        mutations: [payload("c1")],
+        appendContinuationItemsAction: { targetId: "comments-section", continuationItems: [
+          { continuationEndpoint: { continuationCommand: { token: "broken" } } },
+          { continuationEndpoint: { continuationCommand: { token: "working" } } }
+        ] }
+      });
+      if (body.continuation === "broken") {
+        await Promise.race([slow, new Promise((_, reject) => { const timer = setTimeout(() => reject(new Error('scheduler stalled')), 500); timer.unref(); })]);
+        order.push('slow');
+        return Response.json({ mutations: [payload('c3')] });
+      }
+      if (body.continuation === 'working') return Response.json({ mutations: [payload('c2')], appendContinuationItemsAction: { targetId: 'comments-section', continuationItems: [{ continuationEndpoint: { continuationCommand: { token: 'next' } } }] } });
+      order.push('next');
+      releaseSlow();
+      return Response.json({ mutations: [payload('c4')] });
+    }
+  });
+  assert.deepEqual(order, ['next', 'slow']);
+  assert.equal(result.failedPages, 0);
+  assert.deepEqual(result.comments.map(c => c.id).sort(), ['c1','c2','c3','c4']);
+});
