@@ -31,10 +31,23 @@ test("analyzeComments counts sentiment and repeated spam", () => {
   assert.equal(result.summary.sentiment.positive, 1);
   assert.equal(result.summary.sentiment.negative, 1);
   assert.equal(result.summary.suspicious, 3);
-  assert.equal(result.opinions[0].count, 3);
-  assert.match(result.opinions[0].representative, /무료 수익 확인/);
-  assert.match(result.opinions[0].summary, /반복됩니다/);
-  assert.doesNotMatch(result.opinions[0].summary, /https?:\/\//);
+  assert.equal(result.opinions.length, 0);
+  assert.equal(result.comments.filter(c => c.suspicious.label).length, 3);
+});
+
+test('opinion groups exclude suspected automation but retain genuine repeated viewpoints', () => {
+  const genuine = '설명이 자세해서 내용을 이해하는 데 도움이 되었습니다';
+  const spam = '무료 수익 확인 https://spam.example';
+  const comments = [genuine, genuine, spam, spam, spam].map((text, i) => ({
+    id: String(i), author: `author${i}`, authorChannelId: `channel${i}`, text, likeCount: i >= 2 ? 100 : 0
+  }));
+  const result = analyzeComments(comments);
+  assert.equal(result.summary.total, 5);
+  assert.equal(result.summary.suspicious, 3);
+  assert.equal(result.opinions.length, 1);
+  assert.equal(result.opinions[0].count, 2);
+  assert.deepEqual(new Set(result.opinions[0].commentIds), new Set(['0', '1']));
+  assert.equal(result.opinions[0].representative, genuine);
 });
 
 test("normalizePublicComment keeps reply and author metadata", () => {
