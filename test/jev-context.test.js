@@ -36,6 +36,8 @@ test('Jev receives video, parent, missing-context flag and closing negation inde
       assert.match(body.state.classification_rules, /abusive-comment detection/);
       assert.match(body.state.classification_rules, /A quotation is not endorsement/);
       assert.match(body.state.classification_rules, /No label quotas/);
+      assert.match(body.state.classification_rules, /kind-comment versus abusive-comment detection/);
+      assert.match(body.state.classification_rules, /never for uncertainty between labels/);
       assert.match(body.state.classification_rules, /laughter alone as hostility/);
       assert.equal(body.questions.comment_1.instructions.parent_comment, comments[0].text);
       assert.equal(body.questions.comment_2.instructions.parent_context_missing, true);

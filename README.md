@@ -41,9 +41,9 @@ A frontend build or running web server is not needed for terminal use. Reports c
 ## Features and interpretation
 
 - Public comment/reply collection without a YouTube Data API key.
-- Positive: praise, congratulations, gratitude and support.
-- Negative: personal abuse, belittling and malicious mockery.
-- Neutral: constructive criticism, serious disagreement, information and questions.
+- Positive (kind comments): sincere praise, congratulations, gratitude, comfort and support.
+- Negative (abusive comments): personal abuse, belittling, harassment and malicious mockery; not disagreement itself.
+- Neutral: neither clearly kind nor abusive, including ordinary information/non-abusive criticism and uncertain intent. Reasons distinguish insufficient context from ordinary non-hostile content.
 - Mixed: sincere support and hostility in the same comment.
 - Jev receives bounded parent and same-thread tagged-account context. Missing and ambiguous references remain marked. Account names are not opinion topics.
 - Repeated-posting signals identify comments for review, not proof of automation. Suspected automated comments are excluded from common-opinion groups.
