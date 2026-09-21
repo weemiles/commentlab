@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: comment-lens
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: HOST
+        value: 0.0.0.0
+      - key: MAX_COMMENTS
+        value: 3000

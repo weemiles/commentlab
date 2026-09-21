@@ -1,0 +1,28 @@
+{
+  "name": "jev-youtube-comment-analyzer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Open-source YouTube comment sentiment and suspicious-pattern analyzer.",
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env --watch server.js",
+    "start": "node --env-file-if-exists=.env server.js",
+    "test": "node --test",
+    "build": "node scripts/build-ui.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.8.0",
+    "@tailwindcss/cli": "^4.3.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "esbuild": "^0.28.2",
+    "lucide-react": "^1.47.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "tailwind-merge": "^3.7.0",
+    "tailwindcss": "^4.3.3"
+  }
+}
