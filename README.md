@@ -9,20 +9,32 @@ Self-hosted YouTube comment and conversation analysis, powered by your own Jev/T
 Requires Node.js 22.16+ or current LTS and npm.
 
 ```sh
-git clone <YOUR-FORK-URL> commentlab
+git clone https://github.com/weemiles/commentlab.git commentlab
 cd commentlab
 npm ci
 npm run setup
 ```
 
-Review `.env` and choose `TYPESAFE_MODEL`. Then:
+Set your own `TYPESAFE_API_KEY` in `.env` once and choose `TYPESAFE_MODEL`. The setup script restricts `.env` permissions to your OS user; it is ignored by Git. Then:
 
 ```sh
 npm run build
 npm start
 ```
 
-Open http://127.0.0.1:4173. Choose the comment language, paste a YouTube URL, and submit. Enter your own Jev API key in the password-style field. It is held in browser memory only and sent to this server over HTTPS, then to TypeSafe for your request. Refreshing clears the key. Do not enter a key into an instance you do not trust.
+Open http://127.0.0.1:4173. Choose the comment language, paste a YouTube URL, and submit. Local installations automatically use your environment key, with no key field in the UI. No maintainer website is involved. YouTube and TypeSafe internet access is still required.
+
+### Terminal only (no browser)
+
+After installation and key configuration:
+
+```sh
+npm run analyze -- "https://www.youtube.com/watch?v=VIDEO_ID" ko
+# Save the JSON report without npm's command banner:
+npm run --silent analyze -- "https://www.youtube.com/watch?v=VIDEO_ID" en > report.json
+```
+
+A frontend build or running web server is not needed for terminal use. Reports contain collected comments; keep them private unless you intend to share them.
 
 ## Features and interpretation
 
@@ -35,7 +47,7 @@ Open http://127.0.0.1:4173. Choose the comment language, paste a YouTube URL, an
 - Repeated-posting signals identify comments for review, not proof of automation. Suspected automated comments are excluded from common-opinion groups.
 - Author filters, thread inspection, assessment reasons and CSV export.
 
-Opinion grouping and summaries are heuristic/keyword-based. Classification can be wrong. Web requests always require the visitor's own key. Invalid keys and provider failures stop analysis after a bounded retry; they never silently use the owner's credentials or replace AI results with local labels. Inspect `sentimentEngine` and `sentimentFallbackReason` in the response. Local results are not cached. Author percentages exclude mixed comments; mixed-only authors have no three-way dominant tendency.
+Opinion grouping and summaries are heuristic/keyword-based. Classification can be wrong. Public web requests always require the visitor's own key. Invalid keys and provider failures stop analysis after a bounded retry; they never silently use the owner's credentials or replace AI results with local labels. Inspect `sentimentEngine` and `sentimentFallbackReason` in the response. Local results are not cached. Author percentages exclude mixed comments; mixed-only authors have no three-way dominant tendency.
 
 ## Configuration and deployment
 
@@ -43,7 +55,7 @@ See `.env.example`. Keys are server-side only. The app never searches neighborin
 
 Deploy YOUR fork to Vercel, or run the Node server on your own host. Build with `npm ci && npm run build`; Node hosts start with `npm start`. GitHub Pages cannot run the backend.
 
-Web analysis uses **bring your own key (BYOK)**. Do NOT configure an owner `TYPESAFE_API_KEY` for the public web service. Every `/api/analyze` request must include the visitor's `x-jev-api-key` header. Missing keys are rejected before collection. Keys are request-scoped, not logged by the app, persisted, returned, or shared across jobs. Visitor jobs bypass shared caches and in-flight deduplication. An invalid key never falls back to owner credentials.
+Public web analysis uses **bring your own key (BYOK)**. The local Node server alone can read `TYPESAFE_API_KEY` for loopback requests with a local Host and same-origin browser context. Binding to a non-loopback interface disables this convenience. Do not expose or proxy the local server publicly. Do NOT configure an owner `TYPESAFE_API_KEY` for the public web service. Every `/api/analyze` request must include the visitor's `x-jev-api-key` header. Missing keys are rejected before collection. Keys are request-scoped, not logged by the app, persisted, returned, or shared across jobs. Visitor jobs bypass shared caches and in-flight deduplication. An invalid key never falls back to owner credentials.
 
 Use HTTPS and configure your hosting logs to redact `x-jev-api-key` and Authorization headers. Hosting operators can technically access keys while processing requests; self-host if you do not trust an operator. Static assets and health remain public.
 

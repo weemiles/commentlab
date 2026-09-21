@@ -4,7 +4,7 @@ import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { analyzeVideo } from "./lib/analyze-video.js";
 import { streamAnalysis } from "./lib/analysis-stream.js";
-import { rejectUnauthorized, requireVisitorKey } from './lib/access.js';
+import { rejectUnauthorized, requireVisitorKey, localInstallationKey } from './lib/access.js';
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const publicDir = join(root, "public");
@@ -30,7 +30,7 @@ async function readJson(request) {
 }
 
 async function handleAnalyze(request, response) {
-  const apiKey = requireVisitorKey(request, response);
+  const apiKey = request.headers['x-jev-api-key'] ? requireVisitorKey(request, response) : (localInstallationKey(request) || requireVisitorKey(request, response));
   if (!apiKey) return;
   try {
     const body = await readJson(request);
@@ -48,7 +48,7 @@ const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
   if (url.pathname === '/api/progress' && rejectUnauthorized(request, response)) return;
   if (request.method === "GET" && url.pathname === "/api/health") {
-    return json(response, 200, { ok: true, collectionMode: "fast-public-page", sentimentEngine: "visitor-jev-key", maxComments: maxAllowed });
+    return json(response, 200, { ok: true, collectionMode: "fast-public-page", sentimentEngine: "visitor-jev-key", localKeyConfigured: Boolean(localInstallationKey(request)), maxComments: maxAllowed });
   }
   if (request.method === "GET" && url.pathname === "/api/progress") return json(response, 200, progressJobs.get(url.searchParams.get("id")) || { stage: "waiting", done: 0, total: 0, percent: 0 });
   if (request.method === "POST" && url.pathname === "/api/analyze") return handleAnalyze(request, response);

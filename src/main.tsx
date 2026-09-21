@@ -20,6 +20,8 @@ function App() {
   const [lines,setLines]=useState<any[]>([]);
   const [method,setMethod]=useState(false);
   const [jevKey,setJevKey]=useState('');
+  const [localKeyConfigured,setLocalKeyConfigured]=useState(false);
+  useEffect(()=>{fetch('/api/health').then(r=>r.json()).then(data=>setLocalKeyConfigured(data.localKeyConfigured===true)).catch(()=>{});},[]);
   const [sidebarOpen,setSidebarOpen]=useState(true);
   const [swipedId,setSwipedId]=useState<string|null>(null);
   const swipeStart=useRef<{id:string,x:number,y:number}|null>(null);
@@ -33,13 +35,13 @@ function App() {
   async function analyze(e:React.FormEvent){
     e.preventDefault(); if(busy)return;
     if(!url.trim()){setError(t('YouTube 영상 주소를 입력해주세요.','Enter a YouTube video URL.'));return;}
-    if(!jevKey.trim()){setError(t('본인의 Jev API 키를 입력해주세요.','Enter your own Jev API key.'));return;}
+    if(!localKeyConfigured&&!jevKey.trim()){setError(t('본인의 Jev API 키를 입력해주세요.','Enter your own Jev API key.'));return;}
     const submittedUrl=url.trim();setBusy(true);setError('');setProgress({});setLines([]);setUrl('');
     const jobId=crypto.randomUUID();activeRequest.current={id:jobId,controller:new AbortController()};setTurns(old=>[...old,{id:jobId,url:submittedUrl,analysisLanguage,time:Date.now()}]);requestAnimationFrame(()=>requestAnimationFrame(()=>latestRef.current?.scrollIntoView({block:'start',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'})));
     const seen=new Set();
     const onProgress=(p:any)=>{setProgress(p);const fresh=(p.recent||[]).filter((c:any)=>{if(seen.has(c.id))return false;seen.add(c.id);return true;});if(fresh.length)setLines(old=>[...old,...fresh].slice(-40));};
     try{
-      const response=await fetch('/api/analyze',{method:'POST',signal:activeRequest.current?.controller.signal,headers:{'content-type':'application/json','accept':'application/x-ndjson','x-jev-api-key':jevKey.trim()},body:JSON.stringify({url:submittedUrl,analysisLanguage})});
+      const response=await fetch('/api/analyze',{method:'POST',signal:activeRequest.current?.controller.signal,headers:{'content-type':'application/json','accept':'application/x-ndjson',...(jevKey.trim()?{'x-jev-api-key':jevKey.trim()}:{})},body:JSON.stringify({url:submittedUrl,analysisLanguage})});
       if(!response.ok){const data=await response.json();throw new Error(data.error||t('분석하지 못했습니다.','Analysis failed.'));}
       if(!response.headers.get('content-type')?.includes('application/x-ndjson')||!response.body){
         const data=await response.json();setTurns(old=>old.map(turn=>turn.id===jobId?{...turn,result:data}:turn));
@@ -72,7 +74,7 @@ function App() {
       <section className={turns.length?'chat-composer':'landing'}>
         <div className="w-full max-w-4xl">
           {!turns.length&&<div className="mb-9 flex items-center justify-center gap-4"><MessageSquare className="size-7 shrink-0" strokeWidth={1.5}/><h1 className="text-2xl font-medium tracking-tight sm:text-3xl">{t('어떤 영상의 댓글을 분석할까요?','Which video’s comments should we analyze?')}</h1></div>}
-          <label className="mb-3 block text-xs text-muted-foreground">{t('Jev API 키 · 본인 계정으로 분석','Jev API key · use your own account')}<input type="password" value={jevKey} onChange={e=>setJevKey(e.target.value)} autoComplete="off" spellCheck={false} className="mt-2 block w-full rounded-xl border bg-background px-3 py-2 text-sm" placeholder="Jev API key" /><span className="mt-1 block">{t('키는 저장하지 않으며, 분석을 위해 이 서버를 거쳐 TypeSafe에 전달됩니다. 비용은 본인 계정에 청구됩니다.','Your key is not persisted. It passes through this server to TypeSafe for analysis, billed to your account.')}</span></label><form onSubmit={analyze}>
+          {!localKeyConfigured&&<label className="mb-3 block text-xs text-muted-foreground">{t('Jev API 키 · 본인 계정으로 분석','Jev API key · use your own account')}<input type="password" value={jevKey} onChange={e=>setJevKey(e.target.value)} autoComplete="off" spellCheck={false} className="mt-2 block w-full rounded-xl border bg-background px-3 py-2 text-sm" placeholder="Jev API key" /><span className="mt-1 block">{t('키는 저장하지 않으며, 분석을 위해 이 서버를 거쳐 TypeSafe에 전달됩니다. 비용은 본인 계정에 청구됩니다.','Your key is not persisted. It passes through this server to TypeSafe for analysis, billed to your account.')}</span></label>}<form onSubmit={analyze}>
             <InputGroup className="composer h-auto min-h-16 rounded-3xl">
               <label htmlFor="youtube-url" className="sr-only">{t('YouTube 영상 주소','YouTube video URL')}</label>
               <InputGroupInput id="youtube-url" value={url} onChange={e=>setUrl(e.target.value)} placeholder={t('YouTube 영상 주소를 붙여넣으세요','Paste a YouTube video URL')} className="min-w-0 px-4! text-base!" autoComplete="off" type="url" aria-invalid={!!error} aria-describedby={error?'form-error':undefined}/>

@@ -9,7 +9,8 @@
     "start": "node --env-file-if-exists=.env server.js",
     "test": "node --test",
     "build": "node scripts/build-ui.mjs",
-    "setup": "node scripts/setup.mjs"
+    "setup": "node scripts/setup.mjs",
+    "analyze": "node --env-file-if-exists=.env scripts/analyze.mjs"
   },
   "engines": {
     "node": ">=22.16.0"
