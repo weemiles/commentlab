@@ -1,4 +1,5 @@
 import { fetchCollectorSession, fetchCollectorPage, fetchCollectorPages } from '../lib/youtube-fast.js';
+import { fetchVideoTranscript } from '../lib/video-transcript.js';
 import { rejectUnauthorized } from '../lib/access.js';
 import { localeError, messageFor, publicMessage, requestLanguage } from '../lib/messages.js';
 
@@ -8,6 +9,10 @@ export async function collect(body, fetchImpl = fetch) {
   const invalid = () => { throw localeError('invalid_collect_request', { status: 400 }); };
   if (!body || typeof body !== 'object' || Array.isArray(body)) invalid();
   if (JSON.stringify(body).length > 60000) invalid();
+  if (body.action === 'transcript') {
+    if (typeof body.videoId !== 'string' || !/^[A-Za-z0-9_-]{11}$/.test(body.videoId)) invalid();
+    return fetchVideoTranscript({ videoId: body.videoId, language: body.language === 'en' ? 'en' : 'ko', fetchImpl });
+  }
   if (body.action === 'session') {
     if (typeof body.videoId !== 'string' || !/^[A-Za-z0-9_-]{11}$/.test(body.videoId)) invalid();
     return fetchCollectorSession(body.videoId, fetchImpl, body.language === "en" ? "en" : "ko");

@@ -94,3 +94,7 @@ When Jev is enabled, comments, parent/tag context and video metadata are sent to
 ## License
 
 MIT; see [LICENSE](LICENSE). Use, modification and commercial reuse are permitted under its terms. The license grants no access to anyone else's API, credentials, infrastructure or branding and does not prevent reuse of ideas. Third-party UI notices are retained in `src/components/ui/`.
+
+### Private video context
+
+Before collecting comments, analysis attempts to read public YouTube captions (including automatic captions). The interface shows “영상 내용 분석 중” / “Analyzing video content”; transcript text stays out of progress events and analysis results. Jev receives the available transcript as untrusted context for interpreting references, quotations and targets, not as proof or an instruction. Missing or blocked captions do not stop comment analysis. This does not transcribe audio when captions are absent. Long transcripts are explicitly marked partial and limited to 24,000 characters, retaining the opening and ending. The remote collector must support the `transcript` action; older collectors safely fall back to comment-only context.
