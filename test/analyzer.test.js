@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { analyzeComments } from "../lib/analyzer.js";
 import { extractVideoId } from "../lib/video-id.js";
 import { normalizePublicComment } from "../lib/youtube-public.js";
-import { normalizePayload, metadataFromSources, resolveVideoMetadata } from "../lib/youtube-fast.js";
+import { normalizePayload, metadataFromSources, resolveVideoMetadata, fetchYouTubeWithRetry } from "../lib/youtube-fast.js";
 import { analyzeVideo } from "../lib/analyze-video.js";
 import { streamAnalysis } from "../lib/analysis-stream.js";
 import vercelAnalyze from "../api/analyze.js";
@@ -80,6 +80,23 @@ test("video metadata falls back to watch-page renderers and keyless oEmbed", asy
   assert.equal(fromEmbed.channel, "대체 채널");
   assert.match(requests[0], /youtube\.com\/oembed/);
   assert.doesNotMatch(requests[0], /googleapis/);
+});
+
+test("YouTube requests retry a transient limit only once", async () => {
+  let attempts = 0;
+  const response = await fetchYouTubeWithRetry(async () => {
+    attempts += 1;
+    return { ok: attempts === 2, status: attempts === 2 ? 200 : 429 };
+  }, "https://www.youtube.com/watch?v=dQw4w9WgXcQ", {});
+  assert.equal(response.status, 200);
+  assert.equal(attempts, 2);
+
+  attempts = 0;
+  await fetchYouTubeWithRetry(async () => {
+    attempts += 1;
+    return { ok: false, status: 404 };
+  }, "https://www.youtube.com/watch?v=dQw4w9WgXcQ", {});
+  assert.equal(attempts, 1);
 });
 
 test("analyzeComments uses Jev sentiment results when supplied", () => {
