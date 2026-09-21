@@ -108,7 +108,7 @@ test("blocked watch HTML falls back to keyless public data and retains metadata 
     fetchImpl: async (url, options) => {
       const address = new URL(url);
       if (address.pathname === "/watch") return new Response("", { status: 429 });
-      assert.equal(address.origin, "https://youtubei.googleapis.com");
+      assert.equal(address.origin, "https://www.youtube.com");
       assert.equal(address.searchParams.has("key"), false);
       const body = JSON.parse(options.body);
       requests.push(body);
