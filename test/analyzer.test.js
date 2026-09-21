@@ -6,6 +6,7 @@ import { normalizePublicComment } from "../lib/youtube-public.js";
 import { normalizePayload, metadataFromSources, resolveVideoMetadata, fetchYouTubeWithRetry, fetchFastVideoAndComments } from "../lib/youtube-fast.js";
 import { analyzeVideo } from "../lib/analyze-video.js";
 import { streamAnalysis } from "../lib/analysis-stream.js";
+import { DEFAULT_MAX_COMMENTS } from "../lib/limits.js";
 import vercelAnalyze from "../api/analyze.js";
 import vercelHealth from "../api/health.js";
 import { collect } from "../api/collect.js";
@@ -295,7 +296,7 @@ test("Vercel endpoints expose health and validate YouTube URLs", async () => {
   vercelHealth({ method: "GET" }, health);
   assert.equal(health.statusCode, 200);
   assert.equal(health.body.ok, true);
-  assert.equal(health.body.maxComments, 200000);
+  assert.equal(health.body.maxComments, DEFAULT_MAX_COMMENTS);
 
   const invalid = response();
   await vercelAnalyze({ method: "POST", headers: { "x-jev-api-key": "visitor-test-key" }, body: { url: "invalid" } }, invalid);

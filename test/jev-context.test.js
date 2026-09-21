@@ -19,7 +19,6 @@ test('tagged context stays within the thread and marks ambiguity and missing ref
 });
 
 test('Jev receives video, parent, missing-context flag and closing negation independently of other comments', async () => {
-  process.env.TYPESAFE_API_KEY = 'test-only';
   const comments = [
     { id: 'p', text: '참 잘한다. 또 약속 어겼네' },
     { id: 'r', parentId: 'p', text: '그러게 말이에요' },
@@ -27,6 +26,7 @@ test('Jev receives video, parent, missing-context flag and closing negation inde
     { id: 'long', text: '잘했네'.repeat(1500) + '라고 할 줄 알았지? 전혀 아니다.' }
   ];
   const result = await classifySentimentWithJev(comments, {
+    apiKey: 'offline-test-only',
     video: { title: '약속 불이행 논란', channel: '뉴스' },
     fetchImpl: async (_url, options) => {
       const body = JSON.parse(options.body);
