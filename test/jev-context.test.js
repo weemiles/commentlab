@@ -1,6 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { classifySentimentWithJev } from '../lib/jev-sentiment.js';
+import { classifySentimentWithJev, prepareConversationContext } from '../lib/jev-sentiment.js';
+
+test('tagged context stays within the thread and marks ambiguity and missing references', () => {
+  const comments = [
+    { id: 'root', author: '@root', text: '원문' },
+    { id: 'a', parentId: 'root', author: '@alice', text: '근거를 제시해주세요' },
+    { id: 'b', parentId: 'root', author: '@bob', text: '@alice 동의합니다' },
+    { id: 'other', author: '@alice', text: '다른 대화 내용' },
+    { id: 'c', parentId: 'root', author: '@carol', text: '@missing 어디 있나요' }
+  ];
+  let result = prepareConversationContext(comments);
+  assert.equal(result[2].taggedContext[0].status, 'single_candidate');
+  assert.deepEqual(result[2].taggedContext[0].comments.map(c => c.id), ['a']);
+  assert.equal(result[4].taggedContext[0].status, 'missing');
+  result = prepareConversationContext([...comments, { id: 'a2', parentId: 'root', author: '@alice', text: '또 다른 답글' }]);
+  assert.equal(result[2].taggedContext[0].status, 'ambiguous');
+});
 
 test('Jev receives video, parent, missing-context flag and closing negation independently of other comments', async () => {
   process.env.TYPESAFE_API_KEY = 'test-only';

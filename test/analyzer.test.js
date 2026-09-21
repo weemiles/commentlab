@@ -50,6 +50,16 @@ test('opinion groups exclude suspected automation but retain genuine repeated vi
   assert.equal(result.opinions[0].representative, genuine);
 });
 
+test('account mentions are excluded from opinion topics', () => {
+  const result = analyzeComments([
+    { id: 'a', author: '@a', text: '@wayne-se6r 충분한 자료와 출처가 필요합니다' },
+    { id: 'b', author: '@b', text: '@wayne-se6r 충분한 자료와 출처가 필요합니다' }
+  ]);
+  assert.equal(result.opinions.length, 1);
+  assert.doesNotMatch(result.opinions[0].summary, /wayne|se6r/);
+  assert.ok(result.topics.every(t => !/wayne|se6r/.test(t.term)));
+});
+
 test("normalizePublicComment keeps reply and author metadata", () => {
   const comment = normalizePublicComment({
     id: "reply-1",
