@@ -115,6 +115,6 @@
 .history-row.is-revealed .history-delete,.history-row:hover .history-delete,.history-row:focus-within .history-delete { opacity:1; pointer-events:auto; z-index:2; }
 @media(prefers-reduced-motion:reduce) { .analysis-sidebar nav .history-open { transition:none; } }
 
-.insight-panel { border: 1px solid var(--border); border-radius: 16px; padding: 0 20px; margin-block: 16px; background: var(--background); }
-.insight-panel > summary { padding-block: 20px; }
+.insight-panel { border: 1px solid var(--color-border); border-radius: 16px; padding: 0 20px; margin-block: 16px; background: var(--color-background); }
+.insight-heading { padding-block: 20px; font-weight: 600; }
 .insight-panel > .accordion-content { padding-bottom: 20px; }
