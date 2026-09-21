@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { analyzeComments } from "../lib/analyzer.js";
-import { extractVideoId } from "../lib/youtube.js";
+import { extractVideoId } from "../lib/video-id.js";
 import { normalizePublicComment } from "../lib/youtube-public.js";
 import { normalizePayload } from "../lib/youtube-fast.js";
 import { analyzeVideo } from "../lib/analyze-video.js";

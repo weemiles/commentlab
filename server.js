@@ -39,7 +39,7 @@ async function handleAnalyze(request, response) {
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
   if (request.method === "GET" && url.pathname === "/api/health") {
-    return json(response, 200, { ok: true, youtubeConfigured: true, collectionMode: "fast-public-page", sentimentEngine: "jev-with-local-fallback", maxComments: maxAllowed });
+    return json(response, 200, { ok: true, collectionMode: "fast-public-page", sentimentEngine: process.env.TYPESAFE_API_KEY ? "jev-with-local-fallback" : "local-rules", maxComments: maxAllowed });
   }
   if (request.method === "GET" && url.pathname === "/api/progress") return json(response, 200, progressJobs.get(url.searchParams.get("id")) || { stage: "waiting", done: 0, total: 0, percent: 0 });
   if (request.method === "POST" && url.pathname === "/api/analyze") return handleAnalyze(request, response);

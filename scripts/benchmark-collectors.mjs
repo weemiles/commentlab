@@ -1,5 +1,5 @@
 import { performance } from "node:perf_hooks";
-import { extractVideoId } from "../lib/youtube.js";
+import { extractVideoId } from "../lib/video-id.js";
 import { fetchFastVideoAndComments } from "../lib/youtube-fast.js";
 import { fetchPublicVideoAndComments } from "../lib/youtube-public.js";
 

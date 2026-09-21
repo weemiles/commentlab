@@ -7,8 +7,8 @@ async function health() {
   try {
     const response = await fetch("/api/health");
     const data = await response.json();
-    $("#apiState").textContent = data.collectionMode === "youtube-data-api" ? "YouTube API 연결됨" : "고속 공개 수집 사용 중";
-    $("#apiState").classList.toggle("ready", data.youtubeConfigured);
+    $("#apiState").textContent = "고속 공개 수집 사용 중";
+    $("#apiState").classList.add("ready");
   } catch { $("#apiState").textContent = "서버 연결 안 됨"; }
 }
 
