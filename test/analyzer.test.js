@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { analyzeComments } from "../lib/analyzer.js";
 import { extractVideoId } from "../lib/video-id.js";
 import { normalizePublicComment } from "../lib/youtube-public.js";
-import { normalizePayload } from "../lib/youtube-fast.js";
+import { normalizePayload, metadataFromSources, resolveVideoMetadata } from "../lib/youtube-fast.js";
 import { analyzeVideo } from "../lib/analyze-video.js";
 import { streamAnalysis } from "../lib/analysis-stream.js";
 import vercelAnalyze from "../api/analyze.js";
@@ -60,6 +60,26 @@ test("fast YouTube comments retain the published time shown by YouTube", () => {
   });
   assert.equal(comment.publishedText, "2 days ago");
   assert.equal(comment.publishedAt, null);
+});
+
+test("video metadata falls back to watch-page renderers and keyless oEmbed", async () => {
+  const initialData = { contents: {
+    videoPrimaryInfoRenderer: { title: { runs: [{ text: "영상 제목" }] } },
+    videoOwnerRenderer: { title: { runs: [{ text: "채널 이름" }] } }
+  } };
+  const fromPage = metadataFromSources(null, initialData, "dQw4w9WgXcQ", 12);
+  assert.equal(fromPage.title, "영상 제목");
+  assert.equal(fromPage.channel, "채널 이름");
+
+  const requests = [];
+  const fromEmbed = await resolveVideoMetadata(null, {}, "dQw4w9WgXcQ", 12, async (url) => {
+    requests.push(String(url));
+    return { ok: true, json: async () => ({ title: "대체 제목", author_name: "대체 채널" }) };
+  });
+  assert.equal(fromEmbed.title, "대체 제목");
+  assert.equal(fromEmbed.channel, "대체 채널");
+  assert.match(requests[0], /youtube\.com\/oembed/);
+  assert.doesNotMatch(requests[0], /googleapis/);
 });
 
 test("analyzeComments uses Jev sentiment results when supplied", () => {
