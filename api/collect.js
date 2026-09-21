@@ -1,4 +1,4 @@
-import { fetchCollectorSession, fetchCollectorPage } from '../lib/youtube-fast.js';
+import { fetchCollectorSession, fetchCollectorPage, fetchCollectorPages } from '../lib/youtube-fast.js';
 
 // A bounded public-comment operation, not a general URL proxy. Never accept
 // cookies, authorization headers, arbitrary hosts, or arbitrary client contexts.
@@ -15,6 +15,13 @@ export async function collect(body, fetchImpl = fetch) {
     if (typeof body.clientVersion !== 'string' || !/^\d{1,3}\.\d{8}\.\d{2}\.\d{2}$/.test(body.clientVersion)) invalid();
     if (body.visitorData !== undefined && (typeof body.visitorData !== 'string' || !/^[A-Za-z0-9_+/%=.-]{0,8192}$/.test(body.visitorData))) invalid();
     return fetchCollectorPage({ token: body.token, clientVersion: body.clientVersion, visitorData: body.visitorData }, fetchImpl);
+  }
+  if (body.action === 'pages') {
+    if (!Array.isArray(body.tokens) || body.tokens.length < 1 || body.tokens.length > 16) invalid();
+    if (body.tokens.some((token) => typeof token !== 'string' || !/^[A-Za-z0-9_+/%=.-]{1,32768}$/.test(token))) invalid();
+    if (typeof body.clientVersion !== 'string' || !/^\d{1,3}\.\d{8}\.\d{2}\.\d{2}$/.test(body.clientVersion)) invalid();
+    if (body.visitorData !== undefined && (typeof body.visitorData !== 'string' || !/^[A-Za-z0-9_+/%=.-]{0,8192}$/.test(body.visitorData))) invalid();
+    return fetchCollectorPages({ tokens: body.tokens, clientVersion: body.clientVersion, visitorData: body.visitorData }, fetchImpl);
   }
   invalid();
 }

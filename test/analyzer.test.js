@@ -154,21 +154,28 @@ test("remote collection follows pages, deduplicates replies and streams real pro
         video: { id: "dQw4w9WgXcQ", title: "영상", channel: "채널" },
         client: { clientVersion: "2.20260623.01.00" }, firstToken: "first"
       });
+      if (body.action === "pages") {
+        assert.deepEqual(body.tokens, ["second", "third"]);
+        return Response.json([
+          { mutations: [payload("c1"), payload("c1.reply"), payload("c2")] },
+          { mutations: [payload("c3")] }
+        ]);
+      }
       if (body.token === "first") return Response.json({
         mutations: [payload("c1")],
         appendContinuationItemsAction: { targetId: "comments-section", continuationItems: [
-          { continuationEndpoint: { continuationCommand: { token: "second" } } }
+          { continuationEndpoint: { continuationCommand: { token: "second" } } },
+          { continuationEndpoint: { continuationCommand: { token: "third" } } }
         ] }
       });
-      assert.equal(body.token, "second");
-      return Response.json({ mutations: [payload("c1"), payload("c1.reply"), payload("c2")] });
+      assert.fail(`Unexpected collector action: ${body.action}`);
     }
   });
-  assert.deepEqual(calls, ["session", "page", "page"]);
-  assert.deepEqual(progress, [{ done: 1, ids: ["c1"] }, { done: 3, ids: ["c1.reply", "c2"] }]);
+  assert.deepEqual(calls, ["session", "page", "pages"]);
+  assert.deepEqual(progress, [{ done: 1, ids: ["c1"] }, { done: 4, ids: ["c1.reply", "c2", "c3"] }]);
   assert.equal(result.comments[1].parentId, "c1");
   assert.equal(result.video.title, "영상");
-  assert.equal(result.video.commentCount, 3);
+  assert.equal(result.video.commentCount, 4);
   assert.equal(result.truncated, false);
 });
 
@@ -178,7 +185,9 @@ test("collector rejects unsupported operations and invalid tokens before any net
     { action: "session", videoId: "http://localhost" },
     { action: "page", token: "x".repeat(32769), clientVersion: "2.20260623.01.00" },
     { action: "page", token: "token", clientVersion: "invalid" },
-    { action: "page", token: "token", clientVersion: "2.20260623.01.00", visitorData: "invalid\r\nheader" }
+    { action: "page", token: "token", clientVersion: "2.20260623.01.00", visitorData: "invalid\r\nheader" },
+    { action: "pages", tokens: [], clientVersion: "2.20260623.01.00" },
+    { action: "pages", tokens: ["valid", "invalid token"], clientVersion: "2.20260623.01.00" }
   ]) await assert.rejects(collect(body, noNetwork), (error) => error.status === 400);
 });
 
