@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { analyzeVideo } from "./lib/analyze-video.js";
+import { streamAnalysis } from "./lib/analysis-stream.js";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const publicDir = join(root, "public");
@@ -29,6 +30,9 @@ async function readJson(request) {
 async function handleAnalyze(request, response) {
   try {
     const body = await readJson(request);
+    if (String(request.headers.accept || "").includes("application/x-ndjson")) {
+      return streamAnalysis(response, body, { maxAllowed });
+    }
     const report = (value) => { if (body.jobId) progressJobs.set(body.jobId, { ...value, updatedAt: Date.now() }); };
     json(response, 200, await analyzeVideo(body, { maxAllowed, report }));
   } catch (error) {

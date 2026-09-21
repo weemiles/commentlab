@@ -5,6 +5,7 @@ import { extractVideoId } from "../lib/video-id.js";
 import { normalizePublicComment } from "../lib/youtube-public.js";
 import { normalizePayload } from "../lib/youtube-fast.js";
 import { analyzeVideo } from "../lib/analyze-video.js";
+import { streamAnalysis } from "../lib/analysis-stream.js";
 import vercelAnalyze from "../api/analyze.js";
 import vercelHealth from "../api/health.js";
 
@@ -85,4 +86,24 @@ test("Vercel endpoints expose health and validate YouTube URLs", async () => {
   await vercelAnalyze({ method: "POST", body: { url: "invalid" } }, invalid);
   assert.equal(invalid.statusCode, 400);
   await assert.rejects(analyzeVideo({ url: "invalid" }), /YouTube/);
+});
+
+test("analysis stream sends progress and the final result in one response", async () => {
+  const response = {
+    headers: {}, chunks: [], ended: false,
+    setHeader(name, value) { this.headers[name] = value; },
+    flushHeaders() {},
+    write(chunk) { this.chunks.push(chunk); },
+    end() { this.ended = true; }
+  };
+  await streamAnalysis(response, { url: "test" }, {}, async (_body, { report }) => {
+    report({ stage: "collecting", done: 1, recent: [{ id: "comment-1", author: "tester", text: "hello" }] });
+    return { summary: { total: 1 } };
+  });
+  const events = response.chunks.map((chunk) => JSON.parse(chunk));
+  assert.match(response.headers["Content-Type"], /application\/x-ndjson/);
+  assert.equal(events[1].recent[0].id, "comment-1");
+  assert.equal(events.at(-1).type, "result");
+  assert.equal(events.at(-1).data.summary.total, 1);
+  assert.equal(response.ended, true);
 });
