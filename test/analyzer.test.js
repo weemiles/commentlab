@@ -191,6 +191,33 @@ test("collector rejects unsupported operations and invalid tokens before any net
   ]) await assert.rejects(collect(body, noNetwork), (error) => error.status === 400);
 });
 
+test("remote collection falls back to separate page calls when a batch times out", async () => {
+  const calls = [];
+  const payload = (id) => ({ commentEntityPayload: { properties: { commentId: id, content: { content: id } } } });
+  const result = await fetchFastVideoAndComments({
+    videoId: "dQw4w9WgXcQ", maxComments: 100, collectorUrl: "https://collector.example/api/collect",
+    fetchImpl: async (_url, options) => {
+      const body = JSON.parse(options.body);
+      calls.push(`${body.action}:${body.token || body.tokens?.join(",") || ""}`);
+      if (body.action === "session") return Response.json({
+        video: { id: "dQw4w9WgXcQ", title: "영상", channel: "채널" },
+        client: { clientVersion: "2.20260623.01.00" }, firstToken: "first"
+      });
+      if (body.action === "pages") throw new DOMException("timed out", "AbortError");
+      if (body.token === "first") return Response.json({
+        mutations: [payload("c1")],
+        appendContinuationItemsAction: { targetId: "comments-section", continuationItems: [
+          { continuationEndpoint: { continuationCommand: { token: "second" } } },
+          { continuationEndpoint: { continuationCommand: { token: "third" } } }
+        ] }
+      });
+      return Response.json({ mutations: [payload(body.token)] });
+    }
+  });
+  assert.deepEqual(calls, ["session:", "page:first", "pages:second,third", "page:second", "page:third"]);
+  assert.deepEqual(result.comments.map(({ id }) => id), ["c1", "second", "third"]);
+});
+
 test("analyzeComments uses Jev sentiment results when supplied", () => {
   const comments = [{ id: "1", text: "문맥형 댓글", authorChannelId: "a" }];
   const jev = [{ label: "negative", score: 0.91, probabilities: { positive: 0.09, negative: 0.91 } }];
