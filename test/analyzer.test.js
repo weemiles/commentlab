@@ -8,6 +8,7 @@ import { analyzeVideo } from "../lib/analyze-video.js";
 import { streamAnalysis } from "../lib/analysis-stream.js";
 import vercelAnalyze from "../api/analyze.js";
 import vercelHealth from "../api/health.js";
+import { collect } from "../api/collect.js";
 
 test("extractVideoId handles common YouTube URLs", () => {
   assert.equal(extractVideoId("https://www.youtube.com/watch?v=dQw4w9WgXcQ"), "dQw4w9WgXcQ");
@@ -136,6 +137,49 @@ test("blocked watch HTML falls back to keyless public data and retains metadata 
   assert.equal(result.video.channelId, "channel-1");
   assert.equal(progress[0].count, 1);
   assert.equal(progress[0].comments[0].id, "c1");
+});
+
+test("remote collection follows pages, deduplicates replies and streams real progress", async () => {
+  const progress = [];
+  const calls = [];
+  const payload = (id) => ({ commentEntityPayload: { properties: { commentId: id, content: { content: id } } } });
+  const result = await fetchFastVideoAndComments({
+    videoId: "dQw4w9WgXcQ", maxComments: 100, collectorUrl: "https://collector.example/api/collect",
+    onProgress: (done, recent) => progress.push({ done, ids: recent.map((comment) => comment.id) }),
+    fetchImpl: async (url, options) => {
+      assert.equal(url, "https://collector.example/api/collect");
+      const body = JSON.parse(options.body);
+      calls.push(body.action);
+      if (body.action === "session") return Response.json({
+        video: { id: "dQw4w9WgXcQ", title: "영상", channel: "채널" },
+        client: { clientVersion: "2.20260623.01.00" }, firstToken: "first"
+      });
+      if (body.token === "first") return Response.json({
+        mutations: [payload("c1")],
+        appendContinuationItemsAction: { targetId: "comments-section", continuationItems: [
+          { continuationEndpoint: { continuationCommand: { token: "second" } } }
+        ] }
+      });
+      assert.equal(body.token, "second");
+      return Response.json({ mutations: [payload("c1"), payload("c1.reply"), payload("c2")] });
+    }
+  });
+  assert.deepEqual(calls, ["session", "page", "page"]);
+  assert.deepEqual(progress, [{ done: 1, ids: ["c1"] }, { done: 3, ids: ["c1.reply", "c2"] }]);
+  assert.equal(result.comments[1].parentId, "c1");
+  assert.equal(result.video.title, "영상");
+  assert.equal(result.video.commentCount, 3);
+  assert.equal(result.truncated, false);
+});
+
+test("collector rejects unsupported operations and invalid tokens before any network request", async () => {
+  const noNetwork = () => assert.fail("Invalid requests must not perform network calls");
+  for (const body of [null, { action: "proxy", url: "http://localhost" },
+    { action: "session", videoId: "http://localhost" },
+    { action: "page", token: "x".repeat(32769), clientVersion: "2.20260623.01.00" },
+    { action: "page", token: "token", clientVersion: "invalid" },
+    { action: "page", token: "token", clientVersion: "2.20260623.01.00", visitorData: "invalid\r\nheader" }
+  ]) await assert.rejects(collect(body, noNetwork), (error) => error.status === 400);
 });
 
 test("analyzeComments uses Jev sentiment results when supplied", () => {
