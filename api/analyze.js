@@ -1,10 +1,12 @@
 import { analyzeVideo } from '../lib/analyze-video.js';
 import { streamAnalysis } from '../lib/analysis-stream.js';
+import { rejectUnauthorized } from '../lib/access.js';
 
 export default async function handler(request, response) {
   response.setHeader('Cache-Control', 'no-store');
   response.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
   if (request.method !== 'POST') return response.status(405).json({ error: '허용되지 않은 요청입니다.' });
+  if (rejectUnauthorized(request, response)) return;
   try {
     const body = typeof request.body === 'string' ? JSON.parse(request.body) : request.body || {};
     const configuredMax = Number(process.env.MAX_COMMENTS || 200000);

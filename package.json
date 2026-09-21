@@ -8,10 +8,11 @@
     "dev": "node --env-file-if-exists=.env --watch server.js",
     "start": "node --env-file-if-exists=.env server.js",
     "test": "node --test",
-    "build": "node scripts/build-ui.mjs"
+    "build": "node scripts/build-ui.mjs",
+    "setup": "node scripts/setup.mjs"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.16.0"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

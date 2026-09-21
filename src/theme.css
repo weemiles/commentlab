@@ -104,3 +104,6 @@
 @media(max-width:900px) { .page-header.sidebar-offset { margin-left:0; } .app-shell.sidebar-open > main,.app-shell.sidebar-closed > main { margin-left:auto; margin-right:auto; padding-left:20px; padding-right:20px; } .app-shell.sidebar-open .chat-composer { left:0; } .analysis-sidebar { width:280px; box-shadow:12px 0 30px #0000000a; } .analysis-sidebar.is-collapsed { width:56px; box-shadow:none; } }
 @media(max-width:640px) { .landing {padding:32px 0 60px;} .landing.compact {padding:28px 0;} main [data-slot=tabs] {width:100%;} main [data-slot=tabs-list] {width:100%;height:auto;display:grid;grid-template-columns:1fr 1fr;} main [data-slot=tabs-trigger] {min-height:36px;} .thread-bubble {max-width:92%;} .opinion-comments {padding-left:0;} }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after {scroll-behavior:auto!important;animation:none!important;transition:none!important;} }
+
+/* Keep room below the latest prompt so it can scroll to the top. */
+.chat-turn:last-child { min-height:calc(100svh - 180px); }

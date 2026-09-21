@@ -19,6 +19,7 @@ function App() {
   const [turns,setTurns]=useState<any[]>([]); const [progress,setProgress]=useState<any>({});
   const [lines,setLines]=useState<any[]>([]);
   const [method,setMethod]=useState(false);
+  const [accessToken,setAccessToken]=useState('');
   const [sidebarOpen,setSidebarOpen]=useState(true);
   const latestRef=useRef<HTMLDivElement>(null); const streamRef=useRef<HTMLDivElement>(null);
   useEffect(()=>{document.documentElement.lang=language;document.title='Commentlab';},[language]);
@@ -28,11 +29,11 @@ function App() {
     e.preventDefault(); if(busy)return;
     if(!url.trim()){setError(t('YouTube 영상 주소를 입력해주세요.','Enter a YouTube video URL.'));return;}
     const submittedUrl=url.trim();setBusy(true);setError('');setProgress({});setLines([]);setUrl('');
-    const jobId=crypto.randomUUID();setTurns(old=>[...old,{id:jobId,url:submittedUrl,analysisLanguage,time:Date.now()}]);setTimeout(()=>latestRef.current?.scrollIntoView({block:'start',behavior:'smooth'}),60);
+    const jobId=crypto.randomUUID();setTurns(old=>[...old,{id:jobId,url:submittedUrl,analysisLanguage,time:Date.now()}]);requestAnimationFrame(()=>requestAnimationFrame(()=>latestRef.current?.scrollIntoView({block:'start',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'})));
     const seen=new Set();
     const onProgress=(p:any)=>{setProgress(p);const fresh=(p.recent||[]).filter((c:any)=>{if(seen.has(c.id))return false;seen.add(c.id);return true;});if(fresh.length)setLines(old=>[...old,...fresh].slice(-40));};
     try{
-      const response=await fetch('/api/analyze',{method:'POST',headers:{'content-type':'application/json','accept':'application/x-ndjson'},body:JSON.stringify({url:submittedUrl,analysisLanguage})});
+      const response=await fetch('/api/analyze',{method:'POST',headers:{'content-type':'application/json','accept':'application/x-ndjson',...(accessToken?{authorization:`Bearer ${accessToken}`}:{})},body:JSON.stringify({url:submittedUrl,analysisLanguage})});
       if(!response.ok){const data=await response.json();throw new Error(data.error||t('분석하지 못했습니다.','Analysis failed.'));}
       if(!response.headers.get('content-type')?.includes('application/x-ndjson')||!response.body){
         const data=await response.json();setTurns(old=>old.map(turn=>turn.id===jobId?{...turn,result:data}:turn));
@@ -62,7 +63,7 @@ function App() {
       <section className={turns.length?'chat-composer':'landing'}>
         <div className="w-full max-w-4xl">
           {!turns.length&&<div className="mb-9 flex items-center justify-center gap-4"><MessageSquare className="size-7 shrink-0" strokeWidth={1.5}/><h1 className="text-2xl font-medium tracking-tight sm:text-3xl">{t('어떤 영상의 댓글을 분석할까요?','Which video’s comments should we analyze?')}</h1></div>}
-          <form onSubmit={analyze}>
+          <details className="mb-3 text-sm text-muted-foreground"><summary className="cursor-pointer">{t('사이트 접속 암호','Site access password')}</summary><label className="mt-2 block">{t('운영자가 제공한 접속 암호를 입력하세요. Jev API 키가 아닙니다.','Enter the site owner’s access password, not your Jev API key.')}<input type="password" value={accessToken} onChange={e=>setAccessToken(e.target.value)} autoComplete="off" className="mt-2 block w-full rounded-lg border px-3 py-2" /></label></details><form onSubmit={analyze}>
             <InputGroup className="composer h-auto min-h-16 rounded-3xl">
               <label htmlFor="youtube-url" className="sr-only">{t('YouTube 영상 주소','YouTube video URL')}</label>
               <InputGroupInput id="youtube-url" value={url} onChange={e=>setUrl(e.target.value)} placeholder={t('YouTube 영상 주소를 붙여넣으세요','Paste a YouTube video URL')} className="min-w-0 px-4! text-base!" autoComplete="off" type="url" aria-invalid={!!error} aria-describedby={error?'form-error':undefined}/>
@@ -81,11 +82,7 @@ function App() {
 </div>)}</div>
     </main>
     </div>
-    <footer hidden={!!turns.length} className="site-footer text-center text-xs text-muted-foreground">
-      <p><strong>Commentlab</strong><span aria-hidden="true"> | </span>{t('운영: Commentlab 운영팀','Operated by the Commentlab team')}<span aria-hidden="true"> | </span>{t('주소: 서울특별시 강남구 테헤란로 000','Address: 000 Teheran-ro, Gangnam-gu, Seoul')}<span aria-hidden="true"> | </span>{t('전화: 02-0000-0000','Phone: +82-2-0000-0000')}</p>
-      <p>{t('문의: hello@commentlab.example','Contact: hello@commentlab.example')}<span aria-hidden="true"> | </span>{t('사업자등록번호: 000-00-00000','Business registration: 000-00-00000')}<span aria-hidden="true"> | </span>{t('통신판매업신고번호: 2026-서울강남-0000','E-commerce registration: 2026-Seoul Gangnam-0000')}</p>
-      <p><span>{t('이용약관 준비 중','Terms coming soon')}</span><span aria-hidden="true"> | </span><span>{t('개인정보 처리방침 준비 중','Privacy policy coming soon')}</span><span aria-hidden="true"> | </span><span>{t('사업자 정보 예시','Sample business information')}</span></p>
-    </footer>
+    <footer hidden={!!turns.length} className="site-footer text-center text-xs text-muted-foreground"><p>Commentlab · {t('직접 호스팅하는 오픈소스 댓글 분석 도구','Self-hosted open-source comment analysis')}</p></footer>
   </div>;
 }
 

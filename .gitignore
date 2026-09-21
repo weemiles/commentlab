@@ -1,4 +1,12 @@
 .env
+.env.*
+!.env.example
+*.log
+*.tar.gz
+*.zip
+.agents/
+.claude/
+.codex/
 node_modules/
 .DS_Store
 __pycache__/

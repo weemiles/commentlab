@@ -1,4 +1,5 @@
 import { fetchCollectorSession, fetchCollectorPage, fetchCollectorPages } from '../lib/youtube-fast.js';
+import { rejectUnauthorized } from '../lib/access.js';
 
 // A bounded public-comment operation, not a general URL proxy. Never accept
 // cookies, authorization headers, arbitrary hosts, or arbitrary client contexts.
@@ -30,6 +31,7 @@ export default async function handler(request, response) {
   response.setHeader('Cache-Control', 'no-store');
   response.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
   if (request.method !== 'POST') return response.status(405).json({ error: '허용되지 않은 요청입니다.' });
+  if (rejectUnauthorized(request, response)) return;
   try {
     const body = typeof request.body === 'string' ? JSON.parse(request.body) : request.body;
     return response.status(200).json(await collect(body));

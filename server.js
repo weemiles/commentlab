@@ -4,6 +4,7 @@ import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { analyzeVideo } from "./lib/analyze-video.js";
 import { streamAnalysis } from "./lib/analysis-stream.js";
+import { rejectUnauthorized } from './lib/access.js';
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const publicDir = join(root, "public");
@@ -43,6 +44,7 @@ async function handleAnalyze(request, response) {
 
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
+  if (url.pathname.startsWith('/api/') && url.pathname !== '/api/health' && rejectUnauthorized(request, response)) return;
   if (request.method === "GET" && url.pathname === "/api/health") {
     return json(response, 200, { ok: true, collectionMode: "fast-public-page", sentimentEngine: process.env.TYPESAFE_API_KEY ? "jev-with-local-fallback" : "local-rules", maxComments: maxAllowed });
   }

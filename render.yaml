@@ -12,4 +12,10 @@ services:
       - key: HOST
         value: 0.0.0.0
       - key: MAX_COMMENTS
-        value: 200000
+        value: 3000
+      - key: COMMENTLAB_ACCESS_TOKEN
+        generateValue: true
+      - key: TYPESAFE_API_KEY
+        sync: false
+      - key: TYPESAFE_MODEL
+        value: jev-preview
