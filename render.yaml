@@ -12,7 +12,7 @@ services:
       - key: HOST
         value: 0.0.0.0
       - key: MAX_COMMENTS
-        value: 3000
+        value: 200000
       - key: COMMENTLAB_ACCESS_TOKEN
         generateValue: true
       - key: TYPESAFE_MODEL

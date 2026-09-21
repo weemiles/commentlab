@@ -65,7 +65,7 @@ Use HTTPS and configure your hosting logs to redact `x-jev-api-key` and Authoriz
 
 The optional `/api/collect` service remains private: set `COMMENTLAB_ACCESS_TOKEN` to a strong random token to use it, or leave it unset to keep it disabled on hosted deployments. This is separate from visitor Jev keys and is not shown in the web UI.
 
-`MAX_COMMENTS` caps each job and defaults to 3000; 200000 is the ceiling an operator can raise it to. Raise it only after checking your hosting timeout and what each job costs on the visitor's provider account. `YOUTUBE_FETCH_CONCURRENCY` defaults to 16. Reduce it or increase `YOUTUBE_REQUEST_DELAY_MS` when YouTube restricts requests. Collection uses unofficial public endpoints and can fail or change. Respect applicable terms and access controls. Optional `yt-dlp` fallback is separately installed and only works on the Node server.
+`MAX_COMMENTS` caps each job and defaults to 200000, which is also the safety ceiling. This removes the former 3000-comment default; collection may still be limited by availability, request failures, or hosting timeouts. `YOUTUBE_FETCH_CONCURRENCY` defaults to 32. Reduce it or increase `YOUTUBE_REQUEST_DELAY_MS` when YouTube restricts requests. Collection uses unofficial public endpoints and can fail or change. Respect applicable terms and access controls. Optional `yt-dlp` fallback is separately installed and only works on the Node server.
 
 Optional `YOUTUBE_COLLECTOR_URL` must point to a collector you own or are authorized to use. Set its `YOUTUBE_COLLECTOR_TOKEN`. Never point installations to the maintainer's deployment.
 
