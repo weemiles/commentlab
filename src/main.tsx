@@ -21,14 +21,6 @@ function App() {
   const [lines,setLines]=useState<any[]>([]);
   const [method,setMethod]=useState(false);
   const [jevKey,setJevKey]=useState('');
-  const composerRef=useRef<HTMLElement>(null);
-  useEffect(()=>{
-    const element=composerRef.current;
-    if(!element||!turns.length)return;
-    const observer=new ResizeObserver(()=>document.documentElement.style.setProperty('--composer-space',`${element.getBoundingClientRect().height+32}px`));
-    observer.observe(element);
-    return ()=>{observer.disconnect();document.documentElement.style.removeProperty('--composer-space');};
-  },[turns.length>0]);
   const [localKeyConfigured,setLocalKeyConfigured]=useState(false);
   useEffect(()=>{fetch('/api/health').then(r=>r.json()).then(data=>setLocalKeyConfigured(data.localKeyConfigured===true)).catch(()=>{});},[]);
   const [sidebarOpen,setSidebarOpen]=useState(true);
@@ -80,7 +72,7 @@ function App() {
       </div>)}</nav>
     </aside>}
     <main className={`mx-auto max-w-5xl px-5 sm:px-8 ${turns.length?'chat-main':''}`}>
-      <section ref={composerRef} className={turns.length?'chat-composer':'landing'}>
+      <section className={turns.length?'chat-composer':'landing'}>
         <div className="w-full max-w-4xl">
           {!turns.length&&<div className="mb-9 flex items-center justify-center gap-4"><MessageSquare className="size-7 shrink-0" strokeWidth={1.5}/><h1 className="text-2xl font-medium tracking-tight sm:text-3xl">{t('어떤 영상의 댓글을 분석할까요?','Which video’s comments should we analyze?')}</h1></div>}
           {!localKeyConfigured&&<label className="mb-3 block text-xs text-muted-foreground">{t('Jev API 키 · 본인 계정으로 분석','Jev API key · use your own account')}<input type="password" value={jevKey} onChange={e=>setJevKey(e.target.value)} autoComplete="off" spellCheck={false} className="mt-2 block w-full rounded-xl border bg-background px-3 py-2 text-sm" placeholder="Jev API key" /><span className="mt-1 block">{t('키는 저장하지 않으며, 분석을 위해 이 서버를 거쳐 TypeSafe에 전달됩니다. 비용은 본인 계정에 청구됩니다.','Your key is not persisted. It passes through this server to TypeSafe for analysis, billed to your account.')}</span></label>}<form onSubmit={analyze}>
