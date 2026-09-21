@@ -382,7 +382,7 @@ test('overlapping Korean topics merge while opposite claims stay separate', () =
   assert.equal(topic.count, 4);
   assert.equal(topic.likes, 4);
   assert.match(topic.summary, /기준|원칙/);
-  assert.ok(result.opinions.every(group => !(group.commentIds.includes('4') && group.commentIds.includes('6'))));
+  assert.ok(result.opinions.flatMap(group => group.viewpoints).every(group => !(group.commentIds.includes('4') && group.commentIds.includes('6'))));
   const ids = result.opinions.flatMap(group => group.commentIds);
   assert.equal(ids.length, new Set(ids).size);
 });
@@ -396,8 +396,31 @@ test('opposing stances stay separate even when both are non-abusive neutral opin
   ]) {
     const comments = pair.flatMap((text, side) => [0, 1].map(i => ({ id: `${side}-${i}`, text, authorChannelId: `${side}-${i}` })));
     const groups = analyzeComments(comments, comments.map(() => ({ label: 'neutral', score: .9 }))).opinions;
-    assert.equal(groups.length, 2);
-    assert.ok(groups.every(group => group.count === 2));
-    assert.ok(groups.every(group => new Set(group.commentIds.map(id => id.split('-')[0])).size === 1));
+    assert.equal(groups.length, 1);
+    assert.equal(groups[0].count, 4);
+    assert.equal(groups[0].viewpoints.length, 2);
+    assert.ok(groups[0].viewpoints.every(group => new Set(group.commentIds.map(id => id.split('-')[0])).size === 1));
   }
+});
+
+test('numeric topic variants and different sentiment labels appear in one topic row', () => {
+  const texts = [
+    '43억에 3년이면 사람들이 어떻게 생각할까요',
+    '43억이면 3년이라는데 사람들은 어떻게 생각할까요',
+    '43억인데 3년이라는 이야기를 듣고 왔습니다',
+    '43억 3년이면 정말 할만하네 이런 결과라니',
+    '43억에 3년이면 정말 할만하네 어이가 없네요',
+    '김용준 황정음 두 사람의 소식을 들었습니다',
+    '김용준 황정음 두 사람의 소식이 궁금하네요'
+  ];
+  const sentiments = texts.map((_,i)=>({label: i===3||i===4?'negative':'neutral', score:.9}));
+  const result = analyzeComments(texts.map((text,i)=>({id:String(i),text,authorChannelId:String(i)})), sentiments);
+  const group = result.opinions.find(group=>group.commentIds.includes('0'));
+  assert.equal(group.count,5);
+  assert.deepEqual(new Set(group.commentIds),new Set(['0','1','2','3','4']));
+  assert.match(group.summary,/43억/);
+  assert.match(group.summary,/3년/);
+  assert.doesNotMatch(group.summary,/중립적인|부정적인/);
+  assert.equal(result.opinions.length,2);
+  assert.equal(result.comments.find(comment=>comment.id==='3').sentiment.label,'negative');
 });

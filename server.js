@@ -67,7 +67,7 @@ const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
   if (url.pathname === '/api/progress' && rejectUnauthorized(request, response)) return;
   if (request.method === "GET" && url.pathname === "/api/health") {
-    return json(response, 200, { ok: true, sentimentVersion: SENTIMENT_VERSION, opinionVersion: 'topics-v3', videoContextEnabled: true, collectionMode: "fast-public-page", sentimentEngine: "visitor-jev-key", localKeyConfigured: Boolean(localInstallationKey(request)), maxComments: maxAllowed });
+    return json(response, 200, { ok: true, sentimentVersion: SENTIMENT_VERSION, opinionVersion: 'topics-v4', videoContextEnabled: true, collectionMode: "fast-public-page", sentimentEngine: "visitor-jev-key", localKeyConfigured: Boolean(localInstallationKey(request)), maxComments: maxAllowed });
   }
   if (request.method === "GET" && url.pathname === "/api/progress") return json(response, 200, progressJobs.get(url.searchParams.get("id")) || { stage: "waiting", done: 0, total: 0, percent: 0 });
   if (request.method === "POST" && url.pathname === "/api/analyze") return handleAnalyze(request, response);

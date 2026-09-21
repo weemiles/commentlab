@@ -104,3 +104,5 @@ Local installations additionally try the already-installed `yt-dlp` when direct 
 ### Automated checks
 
 GitHub Actions runs `npm ci`, `npm test`, and `npm run build` for pushes to `main` and pull requests, using Node 22.16.0. Tests use offline provider fixtures and require no API credentials.
+
+The visible topic list combines numeric/particle variants (such as `43억에` / `43억이면` and `3년이면` / `3년`) across sentiment labels. Each topic keeps its constituent viewpoint groups and original comment labels; a topic row does not imply agreement or a shared sentiment. Expanded comments show their individual classification.
