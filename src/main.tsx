@@ -19,8 +19,13 @@ function App() {
   const [turns,setTurns]=useState<any[]>([]); const [progress,setProgress]=useState<any>({});
   const [lines,setLines]=useState<any[]>([]);
   const [method,setMethod]=useState(false);
-  const [accessToken,setAccessToken]=useState('');
+  const [jevKey,setJevKey]=useState('');
   const [sidebarOpen,setSidebarOpen]=useState(true);
+  const [swipedId,setSwipedId]=useState<string|null>(null);
+  const swipeStart=useRef<{id:string,x:number,y:number}|null>(null);
+  const movedSwipe=useRef(false);
+  const activeRequest=useRef<{id:string,controller:AbortController}|null>(null);
+  const deleteTurn=(id:string)=>{if(activeRequest.current?.id===id)activeRequest.current.controller.abort();setTurns(old=>old.filter(turn=>turn.id!==id));setSwipedId(null);};
   const latestRef=useRef<HTMLDivElement>(null); const streamRef=useRef<HTMLDivElement>(null);
   useEffect(()=>{document.documentElement.lang=language;document.title='Commentlab';},[language]);
   useEffect(()=>{if(streamRef.current)streamRef.current.scrollTop=streamRef.current.scrollHeight;},[lines]);
@@ -28,12 +33,13 @@ function App() {
   async function analyze(e:React.FormEvent){
     e.preventDefault(); if(busy)return;
     if(!url.trim()){setError(t('YouTube 영상 주소를 입력해주세요.','Enter a YouTube video URL.'));return;}
+    if(!jevKey.trim()){setError(t('본인의 Jev API 키를 입력해주세요.','Enter your own Jev API key.'));return;}
     const submittedUrl=url.trim();setBusy(true);setError('');setProgress({});setLines([]);setUrl('');
-    const jobId=crypto.randomUUID();setTurns(old=>[...old,{id:jobId,url:submittedUrl,analysisLanguage,time:Date.now()}]);requestAnimationFrame(()=>requestAnimationFrame(()=>latestRef.current?.scrollIntoView({block:'start',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'})));
+    const jobId=crypto.randomUUID();activeRequest.current={id:jobId,controller:new AbortController()};setTurns(old=>[...old,{id:jobId,url:submittedUrl,analysisLanguage,time:Date.now()}]);requestAnimationFrame(()=>requestAnimationFrame(()=>latestRef.current?.scrollIntoView({block:'start',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'})));
     const seen=new Set();
     const onProgress=(p:any)=>{setProgress(p);const fresh=(p.recent||[]).filter((c:any)=>{if(seen.has(c.id))return false;seen.add(c.id);return true;});if(fresh.length)setLines(old=>[...old,...fresh].slice(-40));};
     try{
-      const response=await fetch('/api/analyze',{method:'POST',headers:{'content-type':'application/json','accept':'application/x-ndjson',...(accessToken?{authorization:`Bearer ${accessToken}`}:{})},body:JSON.stringify({url:submittedUrl,analysisLanguage})});
+      const response=await fetch('/api/analyze',{method:'POST',signal:activeRequest.current?.controller.signal,headers:{'content-type':'application/json','accept':'application/x-ndjson','x-jev-api-key':jevKey.trim()},body:JSON.stringify({url:submittedUrl,analysisLanguage})});
       if(!response.ok){const data=await response.json();throw new Error(data.error||t('분석하지 못했습니다.','Analysis failed.'));}
       if(!response.headers.get('content-type')?.includes('application/x-ndjson')||!response.body){
         const data=await response.json();setTurns(old=>old.map(turn=>turn.id===jobId?{...turn,result:data}:turn));
@@ -45,7 +51,7 @@ function App() {
         if(!finished)throw new Error(t('분석 연결이 완료 전에 끊어졌습니다.','The analysis connection closed before completion.'));
       }
     }
-    catch(e:any){setTurns(old=>old.map(turn=>turn.id===jobId?{...turn,error:e.message}:turn));}finally{setBusy(false);}
+    catch(e:any){setTurns(old=>old.map(turn=>turn.id===jobId?{...turn,error:e.message}:turn));}finally{activeRequest.current=null;setBusy(false);}
   }
   return <div className="min-h-svh">
     <header className={`page-header flex flex-col items-center gap-2 px-5 pt-5 ${turns.length&&sidebarOpen?'sidebar-offset':''}`}>
@@ -57,13 +63,16 @@ function App() {
     <div className={turns.length?`app-shell ${sidebarOpen?'sidebar-open':'sidebar-closed'}`:''}>
     {!!turns.length&&<aside className={`analysis-sidebar ${sidebarOpen?'':'is-collapsed'}`} aria-label={t('기록','History')}>
       <div className="sidebar-heading"><h2>{t('기록','History')}</h2><button type="button" data-tooltip={sidebarOpen?t('사이드바 닫기','Close sidebar'):t('사이드바 열기','Open sidebar')} onClick={()=>setSidebarOpen(v=>!v)} aria-label={sidebarOpen?t('사이드바 닫기','Close sidebar'):t('사이드바 열기','Open sidebar')} aria-expanded={sidebarOpen}><PanelLeft/></button></div>
-      <nav>{turns.map((turn,index)=><button type="button" key={turn.id} onClick={()=>document.getElementById(`turn-${turn.id}`)?.scrollIntoView({behavior:'smooth',block:'start'})}><span>{turn.result?.video?.title||turn.url}</span><small>{turn.result?.video?.channel||new Date(turn.time).toLocaleTimeString(language==='ko'?'ko-KR':'en-US',{hour:'2-digit',minute:'2-digit'})}{!turn.result&&!turn.error?` · ${t('분석 중','Analyzing')}`:''}</small></button>)}</nav>
+      <nav>{turns.map(turn=><div className={`history-row ${swipedId===turn.id?'is-revealed':''}`} key={turn.id} onPointerDown={e=>{swipeStart.current={id:turn.id,x:e.clientX,y:e.clientY};movedSwipe.current=false;}} onPointerUp={e=>{const start=swipeStart.current;swipeStart.current=null;if(!start||start.id!==turn.id)return;const dx=e.clientX-start.x,dy=e.clientY-start.y;if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)){movedSwipe.current=true;setSwipedId(dx<0?turn.id:null);}}} onPointerCancel={()=>{swipeStart.current=null;}}>
+        <button type="button" className="history-open" onClick={()=>{if(movedSwipe.current){movedSwipe.current=false;return;}if(swipedId===turn.id){setSwipedId(null);return;}document.getElementById(`turn-${turn.id}`)?.scrollIntoView({behavior:'smooth',block:'start'});}}><span>{turn.result?.video?.title||turn.url}</span><small>{turn.result?.video?.channel||new Date(turn.time).toLocaleTimeString(language==='ko'?'ko-KR':'en-US',{hour:'2-digit',minute:'2-digit'})}{!turn.result&&!turn.error?` · ${t('분석 중','Analyzing')}`:''}</small></button>
+        <button type="button" className="history-delete" aria-label={`${t('기록 삭제','Delete history')}: ${turn.result?.video?.title||turn.url}`} onClick={e=>{e.stopPropagation();deleteTurn(turn.id);}}>{t('삭제','Delete')}</button>
+      </div>)}</nav>
     </aside>}
     <main className={`mx-auto max-w-5xl px-5 sm:px-8 ${turns.length?'chat-main':''}`}>
       <section className={turns.length?'chat-composer':'landing'}>
         <div className="w-full max-w-4xl">
           {!turns.length&&<div className="mb-9 flex items-center justify-center gap-4"><MessageSquare className="size-7 shrink-0" strokeWidth={1.5}/><h1 className="text-2xl font-medium tracking-tight sm:text-3xl">{t('어떤 영상의 댓글을 분석할까요?','Which video’s comments should we analyze?')}</h1></div>}
-          <details className="mb-3 text-sm text-muted-foreground"><summary className="cursor-pointer">{t('사이트 접속 암호','Site access password')}</summary><label className="mt-2 block">{t('운영자가 제공한 접속 암호를 입력하세요. Jev API 키가 아닙니다.','Enter the site owner’s access password, not your Jev API key.')}<input type="password" value={accessToken} onChange={e=>setAccessToken(e.target.value)} autoComplete="off" className="mt-2 block w-full rounded-lg border px-3 py-2" /></label></details><form onSubmit={analyze}>
+          <label className="mb-3 block text-xs text-muted-foreground">{t('Jev API 키 · 본인 계정으로 분석','Jev API key · use your own account')}<input type="password" value={jevKey} onChange={e=>setJevKey(e.target.value)} autoComplete="off" spellCheck={false} className="mt-2 block w-full rounded-xl border bg-background px-3 py-2 text-sm" placeholder="Jev API key" /><span className="mt-1 block">{t('키는 저장하지 않으며, 분석을 위해 이 서버를 거쳐 TypeSafe에 전달됩니다. 비용은 본인 계정에 청구됩니다.','Your key is not persisted. It passes through this server to TypeSafe for analysis, billed to your account.')}</span></label><form onSubmit={analyze}>
             <InputGroup className="composer h-auto min-h-16 rounded-3xl">
               <label htmlFor="youtube-url" className="sr-only">{t('YouTube 영상 주소','YouTube video URL')}</label>
               <InputGroupInput id="youtube-url" value={url} onChange={e=>setUrl(e.target.value)} placeholder={t('YouTube 영상 주소를 붙여넣으세요','Paste a YouTube video URL')} className="min-w-0 px-4! text-base!" autoComplete="off" type="url" aria-invalid={!!error} aria-describedby={error?'form-error':undefined}/>

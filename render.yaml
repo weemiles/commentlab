@@ -15,7 +15,5 @@ services:
         value: 3000
       - key: COMMENTLAB_ACCESS_TOKEN
         generateValue: true
-      - key: TYPESAFE_API_KEY
-        sync: false
       - key: TYPESAFE_MODEL
         value: jev-preview

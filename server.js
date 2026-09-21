@@ -4,7 +4,7 @@ import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { analyzeVideo } from "./lib/analyze-video.js";
 import { streamAnalysis } from "./lib/analysis-stream.js";
-import { rejectUnauthorized } from './lib/access.js';
+import { rejectUnauthorized, requireVisitorKey } from './lib/access.js';
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const publicDir = join(root, "public");
@@ -30,13 +30,15 @@ async function readJson(request) {
 }
 
 async function handleAnalyze(request, response) {
+  const apiKey = requireVisitorKey(request, response);
+  if (!apiKey) return;
   try {
     const body = await readJson(request);
     if (String(request.headers.accept || "").includes("application/x-ndjson")) {
-      return streamAnalysis(response, body, { maxAllowed, collectorUrl });
+      return streamAnalysis(response, body, { maxAllowed, collectorUrl, apiKey });
     }
     const report = (value) => { if (body.jobId) progressJobs.set(body.jobId, { ...value, updatedAt: Date.now() }); };
-    json(response, 200, await analyzeVideo(body, { maxAllowed, report, collectorUrl }));
+    json(response, 200, await analyzeVideo(body, { maxAllowed, report, collectorUrl, apiKey }));
   } catch (error) {
     json(response, error.status || 500, { error: error.message || "분석 중 알 수 없는 오류가 발생했습니다." });
   }
@@ -44,9 +46,9 @@ async function handleAnalyze(request, response) {
 
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
-  if (url.pathname.startsWith('/api/') && url.pathname !== '/api/health' && rejectUnauthorized(request, response)) return;
+  if (url.pathname === '/api/progress' && rejectUnauthorized(request, response)) return;
   if (request.method === "GET" && url.pathname === "/api/health") {
-    return json(response, 200, { ok: true, collectionMode: "fast-public-page", sentimentEngine: process.env.TYPESAFE_API_KEY ? "jev-with-local-fallback" : "local-rules", maxComments: maxAllowed });
+    return json(response, 200, { ok: true, collectionMode: "fast-public-page", sentimentEngine: "visitor-jev-key", maxComments: maxAllowed });
   }
   if (request.method === "GET" && url.pathname === "/api/progress") return json(response, 200, progressJobs.get(url.searchParams.get("id")) || { stage: "waiting", done: 0, total: 0, percent: 0 });
   if (request.method === "POST" && url.pathname === "/api/analyze") return handleAnalyze(request, response);

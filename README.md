@@ -15,14 +15,14 @@ npm ci
 npm run setup
 ```
 
-Edit `.env`: set your own `TYPESAFE_API_KEY` and `TYPESAFE_MODEL`. Then:
+Review `.env` and choose `TYPESAFE_MODEL`. Then:
 
 ```sh
 npm run build
 npm start
 ```
 
-Open http://127.0.0.1:4173. Choose the comment language, paste a YouTube URL, and submit. Expand **Site access password** if your installation requires one. This is the site's password, NOT your Jev API key.
+Open http://127.0.0.1:4173. Choose the comment language, paste a YouTube URL, and submit. Enter your own Jev API key in the password-style field. It is held in browser memory only and sent to this server over HTTPS, then to TypeSafe for your request. Refreshing clears the key. Do not enter a key into an instance you do not trust.
 
 ## Features and interpretation
 
@@ -35,7 +35,7 @@ Open http://127.0.0.1:4173. Choose the comment language, paste a YouTube URL, an
 - Repeated-posting signals identify comments for review, not proof of automation. Suspected automated comments are excluded from common-opinion groups.
 - Author filters, thread inspection, assessment reasons and CSV export.
 
-Opinion grouping and summaries are heuristic/keyword-based. Classification can be wrong. Missing Jev configuration uses limited local word rules. A configured provider failure stops analysis after a bounded retry; it never silently replaces AI results with local labels. Inspect `sentimentEngine` and `sentimentFallbackReason` in the response. Local results are not cached. Author percentages exclude mixed comments; mixed-only authors have no three-way dominant tendency.
+Opinion grouping and summaries are heuristic/keyword-based. Classification can be wrong. Web requests always require the visitor's own key. Invalid keys and provider failures stop analysis after a bounded retry; they never silently use the owner's credentials or replace AI results with local labels. Inspect `sentimentEngine` and `sentimentFallbackReason` in the response. Local results are not cached. Author percentages exclude mixed comments; mixed-only authors have no three-way dominant tendency.
 
 ## Configuration and deployment
 
@@ -43,19 +43,17 @@ See `.env.example`. Keys are server-side only. The app never searches neighborin
 
 Deploy YOUR fork to Vercel, or run the Node server on your own host. Build with `npm ci && npm run build`; Node hosts start with `npm start`. GitHub Pages cannot run the backend.
 
-Before hosting, set `COMMENTLAB_ACCESS_TOKEN` to a long random password and configure your own `TYPESAFE_API_KEY` and `TYPESAFE_MODEL` in server-side secrets. Generate a password:
+Web analysis uses **bring your own key (BYOK)**. Do NOT configure an owner `TYPESAFE_API_KEY` for the public web service. Every `/api/analyze` request must include the visitor's `x-jev-api-key` header. Missing keys are rejected before collection. Keys are request-scoped, not logged by the app, persisted, returned, or shared across jobs. Visitor jobs bypass shared caches and in-flight deduplication. An invalid key never falls back to owner credentials.
 
-```sh
-node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
-```
+Use HTTPS and configure your hosting logs to redact `x-jev-api-key` and Authorization headers. Hosting operators can technically access keys while processing requests; self-host if you do not trust an operator. Static assets and health remain public.
 
-Hosted analysis and collector routes reject requests without that password; missing configuration fails closed. Local loopback development may omit it. Static assets and health remain public. Use HTTPS. Programmatic clients send `Authorization: Bearer <YOUR-SITE-PASSWORD>`. Never put keys or the site password in source code or URLs.
+The optional `/api/collect` service remains private: set `COMMENTLAB_ACCESS_TOKEN` to a strong random token to use it, or leave it unset to keep it disabled on hosted deployments. This is separate from visitor Jev keys and is not shown in the web UI.
 
 `MAX_COMMENTS` caps each job; start at 3000. `YOUTUBE_FETCH_CONCURRENCY` defaults to 16. Reduce it or increase `YOUTUBE_REQUEST_DELAY_MS` when YouTube restricts requests. Collection uses unofficial public endpoints and can fail or change. Respect applicable terms and access controls. Optional `yt-dlp` fallback is separately installed and only works on the Node server.
 
 Optional `YOUTUBE_COLLECTOR_URL` must point to a collector you own or are authorized to use. Set its `YOUTUBE_COLLECTOR_TOKEN`. Never point installations to the maintainer's deployment.
 
-Password holders can consume credits. Configure provider spending limits, hosting firewall/rate limits and monitoring. This project has no multi-user identity or distributed quota system.
+Jev charges each visitor's provider account. Hosting and YouTube collection still use the host's resources, so configure hosting firewall/rate limits and monitoring. A syntactically valid key is not validated by TypeSafe until classification. This project has no multi-user identity or distributed quota system.
 
 ## Bundled agent skill
 
@@ -75,7 +73,7 @@ Tests are offline. Live provider tests require your own key and incur costs. Do 
 
 ## Privacy
 
-When Jev is enabled, comments, parent/tag context and video metadata are sent to TypeSafe. Review its terms before processing data. Results are cached in bounded process memory for up to ten minutes; no database is configured. Browser results are in memory; downloaded CSV files are controlled by users. Hosting providers may retain logs. No maintainer API connection or telemetry is bundled.
+When Jev is enabled, comments, parent/tag context and video metadata are sent to TypeSafe. Review its terms before processing data. Visitor requests are not cached across jobs; no database is configured. Browser results are in memory; downloaded CSV files are controlled by users. Hosting providers may retain logs. No maintainer API connection or telemetry is bundled.
 
 ## License
 

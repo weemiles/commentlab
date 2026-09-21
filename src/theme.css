@@ -107,3 +107,10 @@
 
 /* Keep room below the latest prompt so it can scroll to the top. */
 .chat-turn:last-child { min-height:calc(100svh - 180px); }
+
+.history-row { position:relative; overflow:hidden; border-radius:12px; touch-action:pan-y; }
+.analysis-sidebar nav .history-open { position:relative; z-index:1; background:var(--color-background); transition:transform 160ms ease; }
+.history-row.is-revealed .history-open { transform:translateX(-70px); }
+.analysis-sidebar nav .history-delete { position:absolute; inset:0 0 0 auto; width:66px; padding:8px; margin:0; display:grid; place-items:center; color:#b91c1c; background:#fef2f2; opacity:0; pointer-events:none; }
+.history-row.is-revealed .history-delete,.history-row:hover .history-delete,.history-row:focus-within .history-delete { opacity:1; pointer-events:auto; z-index:2; }
+@media(prefers-reduced-motion:reduce) { .analysis-sidebar nav .history-open { transition:none; } }
