@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { analyzeComments } from "../lib/analyzer.js";
 import { extractVideoId } from "../lib/video-id.js";
 import { normalizePublicComment } from "../lib/youtube-public.js";
-import { normalizePayload, metadataFromSources, resolveVideoMetadata, fetchYouTubeWithRetry } from "../lib/youtube-fast.js";
+import { normalizePayload, metadataFromSources, resolveVideoMetadata, fetchYouTubeWithRetry, fetchFastVideoAndComments } from "../lib/youtube-fast.js";
 import { analyzeVideo } from "../lib/analyze-video.js";
 import { streamAnalysis } from "../lib/analysis-stream.js";
 import vercelAnalyze from "../api/analyze.js";
@@ -97,6 +97,45 @@ test("YouTube requests retry a transient limit only once", async () => {
     return { ok: false, status: 404 };
   }, "https://www.youtube.com/watch?v=dQw4w9WgXcQ", {});
   assert.equal(attempts, 1);
+});
+
+test("blocked watch HTML falls back to keyless public data and retains metadata and progress", async () => {
+  const requests = [];
+  const progress = [];
+  const result = await fetchFastVideoAndComments({
+    videoId: "dQw4w9WgXcQ", maxComments: 100,
+    onProgress: (count, comments) => progress.push({ count, comments }),
+    fetchImpl: async (url, options) => {
+      const address = new URL(url);
+      if (address.pathname === "/watch") return new Response("", { status: 429 });
+      assert.equal(address.origin, "https://youtubei.googleapis.com");
+      assert.equal(address.searchParams.has("key"), false);
+      const body = JSON.parse(options.body);
+      requests.push(body);
+      if (body.videoId) return Response.json({
+        responseContext: { visitorData: "test-visitor" },
+        contents: [
+          { itemSectionRenderer: { sectionIdentifier: "related-videos", contents: [] } },
+          { itemSectionRenderer: { targetId: "comments-section", contents: [{ continuationItemRenderer: { continuationEndpoint: { continuationCommand: { token: "comments-token" } } } }] } },
+          { videoPrimaryInfoRenderer: { title: { simpleText: "테스트 영상" } } },
+          { videoOwnerRenderer: { title: { simpleText: "테스트 채널" }, navigationEndpoint: { browseEndpoint: { browseId: "channel-1" } } } }
+        ]
+      });
+      assert.equal(body.continuation, "comments-token");
+      assert.equal(body.context.client.visitorData, "test-visitor");
+      assert.equal(options.headers["x-goog-visitor-id"], "test-visitor");
+      return Response.json({ frameworkUpdates: { entityBatchUpdate: { mutations: [
+        { payload: { commentEntityPayload: { properties: { commentId: "c1", content: { content: "실제 응답 형식 댓글" } }, author: { displayName: "작성자" } } } }
+      ] } } });
+    }
+  });
+  assert.equal(requests.length, 2);
+  assert.equal(result.comments.length, 1);
+  assert.equal(result.video.title, "테스트 영상");
+  assert.equal(result.video.channel, "테스트 채널");
+  assert.equal(result.video.channelId, "channel-1");
+  assert.equal(progress[0].count, 1);
+  assert.equal(progress[0].comments[0].id, "c1");
 });
 
 test("analyzeComments uses Jev sentiment results when supplied", () => {
