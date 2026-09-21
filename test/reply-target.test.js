@@ -1,14 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildReplyTargets } from '../lib/reply-target.js';
-test('reply targets stay in thread and prefer preceding tagged comments, with ties unresolved',()=>{
- const root={id:'r',author:'root',text:'topic',publishedText:'1일 전'};
- const a={id:'a',parentId:'r',author:'@other',text:'argument',publishedText:'22시간 전'};
- const b={id:'b',parentId:'r',author:'me',text:'@other rebuttal',publishedText:'13시간 전'};
- const outside={...a,id:'outside',parentId:'else',publishedText:'14시간 전'};
- assert.equal(buildReplyTargets([root,a,b,outside]).get('b').target.id,'a');
- assert.equal(buildReplyTargets([root,a,{...a,id:'tie'},b]).get('b').status,'ambiguous');
- assert.equal(buildReplyTargets([root,{...a,publishedText:'12시간 전'},b]).get('b').target,null);
- assert.equal(buildReplyTargets([root,b,outside]).get('b').status,'missing');
- assert.equal(buildReplyTargets([root,a,{...b,publishedText:'13시간 전(수정됨)'}]).get('b').target,null);
+test('content selects one tagged comment, not the newest unrelated reply',()=>{
+ const a={id:'a',parentId:'r',author:'@other',text:'최대업적은 코스피 2000대에서 6000대까지 올려놓은거같음',publishedText:'1일 전'};
+ const unrelated={...a,id:'b',text:'반도체 클러스터 예산 계획과 투자 발표',publishedText:'1일 전'};
+ const c={id:'c',parentId:'r',author:'me',text:'@other 주가지수로 평가하나요? 코스피만 올랐고 코스닥은 떨어졌는데요',publishedText:'1일 전'};
+ assert.equal(buildReplyTargets([a,unrelated,c]).get('c').target.id,'a');
+ assert.equal(buildReplyTargets([a,{...a,id:'tie'},c]).get('c').target,null);
+ assert.equal(buildReplyTargets([{...a,publishedText:'1시간 전'},c]).get('c').target,null);
+ assert.equal(buildReplyTargets([{...a,parentId:'else'},c]).get('c').target,null);
+ assert.equal(buildReplyTargets([a,{...c,text:'@other 무슨 소리인지 모르겠네요'}]).get('c').target,null);
 });
