@@ -7,8 +7,8 @@ export default async function handler(request, response) {
   if (request.method !== 'POST') return response.status(405).json({ error: '허용되지 않은 요청입니다.' });
   try {
     const body = typeof request.body === 'string' ? JSON.parse(request.body) : request.body || {};
-    const configuredMax = Number(process.env.MAX_COMMENTS || 3000);
-    const maxAllowed = Number.isFinite(configuredMax) ? Math.max(100, Math.min(3000, configuredMax)) : 3000;
+    const configuredMax = Number(process.env.MAX_COMMENTS || 200000);
+    const maxAllowed = Number.isFinite(configuredMax) ? Math.max(100, Math.min(200000, configuredMax)) : 200000;
     if (String(request.headers?.accept || '').includes('application/x-ndjson')) {
       return streamAnalysis(response, body, { maxAllowed, allowPublicFallback: false });
     }

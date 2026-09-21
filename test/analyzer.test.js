@@ -237,6 +237,7 @@ test("Vercel endpoints expose health and validate YouTube URLs", async () => {
   vercelHealth({ method: "GET" }, health);
   assert.equal(health.statusCode, 200);
   assert.equal(health.body.ok, true);
+  assert.equal(health.body.maxComments, 200000);
 
   const invalid = response();
   await vercelAnalyze({ method: "POST", body: { url: "invalid" } }, invalid);
