@@ -49,7 +49,7 @@ A frontend build or running web server is not needed for terminal use. Reports c
 - Repeated-posting signals identify comments for review, not proof of automation. Suspected automated comments are excluded from common-opinion groups.
 - Author filters, thread inspection, assessment reasons and CSV export.
 
-Opinion grouping and summaries are heuristic/keyword-based. Classification can be wrong. Public web requests always require the visitor's own key. Invalid keys and provider failures stop analysis after a bounded retry; they never silently use the owner's credentials or replace AI results with local labels. There is no local-label fallback path at all, so `sentimentEngine` in a successful response is always `jev`. Results are never cached or shared between jobs. Author percentages exclude mixed comments; mixed-only authors have no three-way dominant tendency.
+Opinion grouping and summaries are heuristic/keyword-based. Classification can be wrong. Public web requests always require the visitor's own key. Invalid keys and provider failures stop analysis after a bounded retry; they never silently use the owner's credentials or replace AI results with local labels. There is no local-label fallback path at all, so `sentimentEngine` in a successful response is always `jev`. Complete results are cached in process memory for 10 minutes, isolated by a process-salted HMAC of the API key and request parameters. People sharing an API key share that cache scope. Author percentages exclude mixed comments; mixed-only authors have no three-way dominant tendency.
 
 ## Configuration and deployment
 
@@ -59,7 +59,7 @@ Error responses are returned in the visitor's language, chosen from `analysisLan
 
 Deploy YOUR fork to Vercel, or run the Node server on your own host. Build with `npm ci && npm run build`; Node hosts start with `npm start`. GitHub Pages cannot run the backend.
 
-Public web analysis uses **bring your own key (BYOK)**. The local Node server alone can read `TYPESAFE_API_KEY` for loopback requests with a local Host and same-origin browser context. Binding to a non-loopback interface disables this convenience. Do not expose or proxy the local server publicly. Do NOT configure an owner `TYPESAFE_API_KEY` for the public web service. Every `/api/analyze` request must include the visitor's `x-jev-api-key` header. Missing keys are rejected before collection. Keys are request-scoped, not logged by the app, persisted, returned, or shared across jobs. There is no shared result cache or in-flight deduplication, so no job can ever be answered by another visitor's provider call. An invalid key never falls back to owner credentials.
+Public web analysis uses **bring your own key (BYOK)**. The local Node server alone can read `TYPESAFE_API_KEY` for loopback requests with a local Host and same-origin browser context. Binding to a non-loopback interface disables this convenience. Do not expose or proxy the local server publicly. Do NOT configure an owner `TYPESAFE_API_KEY` for the public web service. Every `/api/analyze` request must include the visitor's `x-jev-api-key` header. Missing keys are rejected before collection. Keys are request-scoped, not logged by the app, persisted, returned, or shared across jobs. There is no cross-key result sharing or in-flight deduplication. Cache memory is bounded to 16 MB per process and disappears on restart. An invalid key never falls back to owner credentials.
 
 Use HTTPS and configure your hosting logs to redact `x-jev-api-key` and Authorization headers. Hosting operators can technically access keys while processing requests; self-host if you do not trust an operator. Static assets and health remain public.
 
@@ -89,7 +89,7 @@ Tests are offline. Live provider tests require your own key and incur costs. Do 
 
 ## Privacy
 
-When Jev is enabled, comments, parent/tag context and video metadata are sent to TypeSafe. Review its terms before processing data. Visitor requests are not cached across jobs; no database is configured. Browser results are in memory; downloaded CSV files are controlled by users. Hosting providers may retain logs. No maintainer API connection or telemetry is bundled.
+When Jev is enabled, comments, parent/tag context and video metadata are sent to TypeSafe. Review its terms before processing data. Complete reports may remain in the same-key memory cache for up to 10 minutes; no database is configured. Browser results are in memory; downloaded CSV files are controlled by users. Hosting providers may retain logs. No maintainer API connection or telemetry is bundled.
 
 ## License
 

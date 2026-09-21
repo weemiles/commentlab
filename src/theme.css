@@ -114,3 +114,7 @@
 .analysis-sidebar nav .history-delete { position:absolute; inset:0 0 0 auto; width:66px; padding:8px; margin:0; display:grid; place-items:center; color:#b91c1c; background:#fef2f2; opacity:0; pointer-events:none; }
 .history-row.is-revealed .history-delete,.history-row:hover .history-delete,.history-row:focus-within .history-delete { opacity:1; pointer-events:auto; z-index:2; }
 @media(prefers-reduced-motion:reduce) { .analysis-sidebar nav .history-open { transition:none; } }
+
+.insight-panel { border: 1px solid var(--border); border-radius: 16px; padding: 0 20px; margin-block: 16px; background: var(--background); }
+.insight-panel > summary { padding-block: 20px; }
+.insight-panel > .accordion-content { padding-bottom: 20px; }
