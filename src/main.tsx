@@ -168,12 +168,11 @@ return (      <section className="assistant-result">
           <Tabs className="comment-kind" value={kind} onValueChange={v=>{setKind(String(v));setLimit(50);}}><TabsList aria-label={t('댓글 유형','Comment type')}>{[['all',t('전체','All'),matching.length],['top',t('댓글','Comments'),matching.filter((c:any)=>!c.parentId).length],['reply',t('대댓글','Replies'),matching.filter((c:any)=>c.parentId).length]].map(([value,label,count])=><TabsTrigger key={String(value)} value={String(value)}>{label} <span className="ml-1 tabular-nums">{number(Number(count))}</span></TabsTrigger>)}</TabsList></Tabs>
           {comments.slice(0,limit).map((c:any,i:number)=>{
             const relation:any=replyTargets.get(c.id);
-            const rootParent:any=c.parentId?parents.get(c.parentId):null;
-            const parent:any=relation?relation.target:rootParent;
+            const taggedComments:any[]=relation?.target?[relation.target]:(relation?.candidates||[]);
             return <article key={c.id} className="thread-record">
               <div className="thread-bubbles">
-                {parent&&<div title={relation?.target?t('내용을 비교해 추정한 답변 대상입니다.','Reply target inferred from text similarity.'):undefined} className="thread-bubble thread-parent"><div className="thread-meta">{authorName(parent)}<small>{relation?.target?t('답변 대상 추정','Likely reply target'):t('댓글','Comment')}{commentTime(parent)?` · ${commentTime(parent)}`:''} · {t('좋아요','Likes')} {number(parent.likeCount)}</small></div><p>{parent.text}</p></div>}
-                <div className={`thread-bubble ${parent?'thread-reply':'thread-parent'}`}><div className="thread-meta">{authorName(c)}<small>{c.parentId?t('대댓글','Reply'):t('댓글','Comment')}{commentTime(c)?` · ${commentTime(c)}`:''} · {t('좋아요','Likes')} {number(c.likeCount)}</small></div><p>{c.text}</p></div>
+                {taggedComments.map((parent:any)=><div key={parent.id} className="thread-bubble thread-parent"><div className="thread-meta">{authorName(parent)}<small>{t('태그한 상대의 댓글','Tagged participant’s comment')}{commentTime(parent)?` · ${commentTime(parent)}`:''} · {t('좋아요','Likes')} {number(parent.likeCount)}</small></div><p>{parent.text}</p></div>)}
+                <div className={`thread-bubble ${taggedComments.length?'thread-reply':'thread-parent'}`}><div className="thread-meta">{authorName(c)}<small>{c.parentId?t('대댓글','Reply'):t('댓글','Comment')}{commentTime(c)?` · ${commentTime(c)}`:''} · {t('좋아요','Likes')} {number(c.likeCount)}</small></div><p>{c.text}</p></div>
               </div>
             </article>;
           })}

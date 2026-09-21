@@ -9,5 +9,5 @@ test('content selects one tagged comment, not the newest unrelated reply',()=>{
  assert.equal(buildReplyTargets([a,{...a,id:'tie'},c]).get('c').target,null);
  assert.equal(buildReplyTargets([{...a,publishedText:'1시간 전'},c]).get('c').target,null);
  assert.equal(buildReplyTargets([{...a,parentId:'else'},c]).get('c').target,null);
- assert.equal(buildReplyTargets([a,{...c,text:'@other 무슨 소리인지 모르겠네요'}]).get('c').target,null);
+ assert.equal(buildReplyTargets([a,{...c,text:'@other 마찬가지임'}]).get('c').target.id,'a');
 });
